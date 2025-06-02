@@ -1,0 +1,20 @@
+# .air.toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/kick-monitor ./cmd/kick-monitor"
+  # bin = ";export $(grep -v '^#' .env | xargs); ./tmp/kick-monitor"
+  bin = "./tmp/kick-monitor"
+  include_ext = ["go", "tpl", "tmpl", "html", "yaml"]
+  exclude_dir = ["assets", "tmp", "vendor", "node_modules"]
+  delay = 1000 # ms
+
+[run]
+  log = "air.log"
+
+[watcher]
+  exclude = ["internal/db"]
+
+[log]
+  time = true

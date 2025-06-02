@@ -1,0 +1,45 @@
+# Go
+/tmp/                  # Air temporary build directory
+*.out                  # Test binary
+
+# Binaries for programs and plugins
+*.exe
+*.darwin-amd64
+*.darwin-arm64
+*.linux-amd64
+*.linux-arm64
+*.freebsd-amd64
+*.windows-amd64
+
+# Package Manager
+vendor/
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.bak
+*.tmp
+.DS_Store
+
+# Logs
+*.log
+logs/
+air.log
+
+# Database Data (Docker volumes should handle persistence, but just in case of local files)
+*.db
+*.sqlite
+data/
+
+# Environment variables (if you have .env files)
+.env
+.env.local
+
+# Specific binaries built by Makefile
+/kick-monitor
+/tmp/kick-monitor
+!/kick-monitor/
+
+# CSV files for as backup
+*.csv

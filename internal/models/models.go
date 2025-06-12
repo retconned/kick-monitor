@@ -1,8 +1,10 @@
 package models
 
 import (
-	"github.com/google/uuid" // Import the uuid package
+	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // MonitoredChannel uses the Kick API's channel ID as the primary key
@@ -54,4 +56,87 @@ type ChatMessage struct {
 	Metadata        []byte    `gorm:"type:jsonb"`           // Metadata as JSONB (nullable if not always present)
 	MessageSendTime time.Time `gorm:"not null"`             // Original message send time from data
 	CreatedAt       time.Time `gorm:"autoCreateTime"`       // Timestamp of when message was processed/saved Extracted Chat Message Fields
+}
+
+// LivestreamReport will store aggregated metrics (updated)
+type LivestreamReport struct {
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
+	LivestreamID    uint      `gorm:"not null"`
+	ChannelID       uint      `gorm:"not null"`
+	Username        string    `gorm:"size:255;not null"`
+	ReportStartTime time.Time `gorm:"not null"`
+	ReportEndTime   time.Time `gorm:"not null"`
+	DurationMinutes int       `gorm:"not null"`
+
+	// Viewer Analytics
+	AverageViewers int     `gorm:"not null;default:0"`
+	PeakViewers    int     `gorm:"not null;default:0"`
+	LowestViewers  int     `gorm:"not null;default:0"`
+	Engagement     float64 `gorm:"not null;default:0.0"`
+
+	// Chat Metrics (spam/emote related moved to SpamReport)
+	TotalMessages    int `gorm:"not null;default:0"`
+	UniqueChatters   int `gorm:"not null;default:0"`
+	MessagesFromApps int `gorm:"not null;default:0"`
+
+	SpamReportID *uuid.UUID `gorm:"type:uuid"` // Moved before timelines
+
+	// Timelines
+	ViewerCountsTimeline  []byte `gorm:"type:jsonb"`
+	MessageCountsTimeline []byte `gorm:"type:jsonb"`
+
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+}
+
+// SpamReport will store detailed spam analysis (updated - structural changes)
+type SpamReport struct {
+	ID                 uuid.UUID `gorm:"type:uuid;primaryKey"`
+	LivestreamReportID uuid.UUID `gorm:"type:uuid;not null"`
+	ChannelID          uint      `gorm:"not null"` // Redundant but useful for joins
+	LivestreamID       uint      `gorm:"not null"` // Redundant but useful for joins
+
+	// New: Moved from LivestreamReport
+	MessagesWithEmotes         int `gorm:"not null;default:0"`
+	MessagesMultipleEmotesOnly int `gorm:"not null;default:0"`
+
+	// Spam Analysis Fields (extracted from JSONB)
+	DuplicateMessagesCount int    `gorm:"not null;default:0"`
+	RepetitivePhrasesCount int    `gorm:"not null;default:0"`
+	ExactDuplicateBursts   []byte `gorm:"type:jsonb"`
+	SimilarMessageBursts   []byte `gorm:"type:jsonb"`
+	SuspiciousChatters     []byte `gorm:"type:jsonb"`
+
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+}
+
+type FollowersCountPoint struct {
+	Time  time.Time `json:"time"`
+	Count int       `json:"count"`
+}
+
+type StreamerProfile struct {
+	ChannelID           uint            `gorm:"primaryKey;autoIncrement:false"` // FK to monitored_channels.id
+	Username            string          `gorm:"size:255;not null"`
+	Verified            bool            `gorm:"not null;default:false"`
+	IsBanned            bool            `gorm:"not null;default:false"`
+	VodEnabled          bool            `gorm:"not null;default:false"`
+	IsAffiliate         bool            `gorm:"not null;default:false"`
+	SubscriptionEnabled bool            `gorm:"not null;default:false"`
+	FollowersCount      json.RawMessage `gorm:"type:jsonb"`
+	Livestreams         []byte          `gorm:"type:jsonb"`
+
+	Bio        string `gorm:"type:text"`
+	City       string `gorm:"size:255"`
+	State      string `gorm:"size:255"`
+	TikTok     string `gorm:"size:255"`
+	Country    string `gorm:"size:255"`
+	Discord    string `gorm:"size:255"`
+	Twitter    string `gorm:"size:255"`
+	YouTube    string `gorm:"size:255"`
+	Facebook   string `gorm:"size:255"`
+	Instagram  string `gorm:"size:255"`
+	ProfilePic string `gorm:"type:text"`
+
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }

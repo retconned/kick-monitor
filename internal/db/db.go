@@ -30,7 +30,6 @@ func Init() {
 	)
 
 	var err error
-	// Retry connecting to the database
 	for i := 0; i < 5; i++ { // Try up to 5 times
 		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err == nil {
@@ -44,9 +43,7 @@ func Init() {
 		log.Fatalf("Exhausted retries: Failed to connect to database: %v", err)
 	}
 
-	// Auto-migrate the schema
-	// GORM should handle the composite primary key definitions and foreign keys
-	err = DB.AutoMigrate(&models.MonitoredChannel{}, &models.ChannelData{}, &models.LivestreamData{}, &models.ChatMessage{})
+	err = DB.AutoMigrate(&models.MonitoredChannel{}, &models.ChannelData{}, &models.LivestreamData{}, &models.ChatMessage{}, &models.LivestreamReport{}, &models.SpamReport{}, &models.StreamerProfile{})
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schema: %v", err)
 	}

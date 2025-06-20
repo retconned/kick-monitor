@@ -49,7 +49,7 @@ func AddChannelHandler(w http.ResponseWriter, r *http.Request) {
 
 	if result.Error == nil {
 		// Channel found in database, check if active and update if necessary
-		log.Printf("Channel %s already exists in DB (ID: %d).", req.Username, existingChannel.ID)
+		log.Printf("Channel %s already exists in DB (ID: %d).", req.Username, existingChannel.ChannelID)
 
 		if existingChannel.IsActive != req.IsActive {
 			// Update is_active status
@@ -90,8 +90,8 @@ func AddChannelHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	channel := models.MonitoredChannel{
-		ID:         uint(kickData.ID), // Use the ID from the API
-		ChatRoomID: uint(kickData.Chatroom.ID),
+		ChannelID:  uint(kickData.ID), // Use the ID from the API
+		ChatroomID: uint(kickData.Chatroom.ID),
 		Username:   req.Username,
 		IsActive:   req.IsActive,
 	}
@@ -99,8 +99,8 @@ func AddChannelHandler(w http.ResponseWriter, r *http.Request) {
 	// Check again for potential race condition if another request added the channel
 	// between the initial check and fetching data. This is less likely but good practice.
 	var potentialExistingChannel models.MonitoredChannel
-	if err := db.DB.First(&potentialExistingChannel, channel.ID).Error; err == nil {
-		log.Printf("Race condition detected: Channel %s (ID: %d) was added by another process.", req.Username, channel.ID)
+	if err := db.DB.First(&potentialExistingChannel, channel.ChannelID).Error; err == nil {
+		log.Printf("Race condition detected: Channel %s (ID: %d) was added by another process.", req.Username, channel.ChannelID)
 		http.Error(w, "Channel was added concurrently", http.StatusConflict)
 		return
 	} else if err != gorm.ErrRecordNotFound {
@@ -116,7 +116,7 @@ func AddChannelHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Added new channel %s with ID %d to database", channel.Username, channel.ID)
+	log.Printf("Added new channel %s with ID %d to database", channel.Username, channel.ChannelID)
 
 	if channel.IsActive {
 		go monitor.StartMonitoringChannel(&channel) // Start monitoring in a Go routine

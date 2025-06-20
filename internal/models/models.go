@@ -9,8 +9,8 @@ import (
 
 // MonitoredChannel uses the Kick API's channel ID as the primary key
 type MonitoredChannel struct {
-	ID         uint   `gorm:"primaryKey"` // Use the Kick API channel ID
-	ChatRoomID uint   `gorm:"unique;notnull"`
+	ChannelID  uint   `gorm:"primaryKey"`
+	ChatroomID uint   `gorm:"unique;notnull"`
 	Username   string `gorm:"unique;not null"`
 	IsActive   bool   `gorm:"default:true"`
 	CreatedAt  time.Time

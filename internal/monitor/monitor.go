@@ -276,8 +276,8 @@ func NewReportMetrics() *ReportMetrics {
 
 // StartMonitoringChannel initiates the data fetching and WebSocket routines for a channel.
 func StartMonitoringChannel(channel *models.MonitoredChannel) {
-	log.Printf("Starting monitoring for channel: %s (ID: %d)", channel.Username, channel.ID)
-	latestLivestream.Store(channel.ID, LatestLivestreamInfo{}) // Start with a zero value
+	log.Printf("Starting monitoring for channel: %s (ID: %d)", channel.Username, channel.ChannelID)
+	latestLivestream.Store(channel.ChannelID, LatestLivestreamInfo{}) // Start with a zero value
 	// Start data fetching Go routine (uses proxy)
 	go fetchDataAndPersist(channel)
 
@@ -349,7 +349,7 @@ func fetchDataAndPersist(channel *models.MonitoredChannel) {
 
 // ProcessChannelData: fetches, prints, and persists channel and livestream data, AND updates StreamerProfile
 func processChannelData(channel *models.MonitoredChannel) { // Takes MonitoredChannel by value
-	log.Printf("Processing data for channel: %s (ID: %d, ChatRoomID: %d)", channel.Username, channel.ID, channel.ChatRoomID)
+	log.Printf("Processing data for channel: %s (ID: %d, ChatroomID : %d)", channel.Username, channel.ChannelID, channel.ChatroomID)
 	apiURL := fmt.Sprintf("https://kick.com/api/v2/channels/%s", channel.Username)
 
 	proxyReqPayload := ProxyRequestPayload{
@@ -399,17 +399,17 @@ func processChannelData(channel *models.MonitoredChannel) { // Takes MonitoredCh
 		return
 	}
 
-	log.Printf("Fetched Channel Data for %s (ID: %d, ChatRoomID: %d):\n", channel.Username, channel.ID, channel.ChatRoomID) // Log raw JSON
+	log.Printf("Fetched Channel Data for %s (ID: %d, ChatroomID : %d):\n", channel.Username, channel.ChannelID, channel.ChatroomID) // Log raw JSON
 
 	channelData := models.ChannelData{
 		ID:        uuid.New(),
-		ChannelID: channel.ID,
+		ChannelID: channel.ChannelID,
 		Data:      []byte(jsonString),
 	}
 	if err := db.DB.Create(&channelData).Error; err != nil {
 		log.Printf("Error saving channel data for %s: %v", channel.Username, err)
 	} else {
-		log.Printf("Saved channel data for %s (Channel ID: %d, UUID: %s)", channel.Username, channel.ID, channelData.ID.String())
+		log.Printf("Saved channel data for %s (Channel ID: %d, UUID: %s)", channel.Username, channel.ChannelID, channelData.ID.String())
 	}
 
 	// Persist livestream data if available and update in-memory latest livestream info
@@ -433,7 +433,7 @@ func processChannelData(channel *models.MonitoredChannel) { // Takes MonitoredCh
 		livestreamID := uint(kickData.Livestream.ID)
 
 		livestreamData := models.LivestreamData{
-			ChannelID:    channel.ID,
+			ChannelID:    channel.ChannelID,
 			LivestreamID: livestreamID, // Use the livestream ID from the data
 
 			Slug:                kickData.Livestream.Slug,
@@ -449,24 +449,24 @@ func processChannelData(channel *models.MonitoredChannel) { // Takes MonitoredCh
 		if err := db.DB.Create(&livestreamData).Error; err != nil {
 			log.Printf("Error saving livestream data for %s (Livestream ID: %d): %v", channel.Username, livestreamData.LivestreamID, err)
 		} else {
-			log.Printf("Saved livestream data for %s (Channel ID: %d, Livestream ID: %d)", channel.Username, channel.ID, livestreamData.LivestreamID)
+			log.Printf("Saved livestream data for %s (Channel ID: %d, Livestream ID: %d)", channel.Username, channel.ChannelID, livestreamData.LivestreamID)
 
 			// Update in-memory latest livestream info
-			latestLivestream.Store(channel.ID, LatestLivestreamInfo{
+			latestLivestream.Store(channel.ChannelID, LatestLivestreamInfo{
 				LivestreamID: livestreamID,
 				FetchTime:    time.Now(), // Use the current time when data was successfully fetched
 				IsLive:       kickData.Livestream.IsLive,
 			})
-			log.Printf("Updated in-memory latest livestream for channel %s (ID: %d) to LivestreamID: %d", channel.Username, channel.ID, livestreamID)
+			log.Printf("Updated in-memory latest livestream for channel %s (ID: %d) to LivestreamID: %d", channel.Username, channel.ChannelID, livestreamID)
 		}
 	} else {
-		log.Printf("No active livestream data for channel: %s (ID: %d). Clearing in-memory latest livestream info.", channel.Username, channel.ID)
-		latestLivestream.Store(channel.ID, LatestLivestreamInfo{})
+		log.Printf("No active livestream data for channel: %s (ID: %d). Clearing in-memory latest livestream info.", channel.Username, channel.ChannelID)
+		latestLivestream.Store(channel.ChannelID, LatestLivestreamInfo{})
 	}
 
 	err = streamerProfileBuilder(channel, kickData)
 	if err != nil {
-		log.Printf("Error updating streamer profile for channel %s (ID: %d): %v", channel.Username, channel.ID, err)
+		log.Printf("Error updating streamer profile for channel %s (ID: %d): %v", channel.Username, channel.ChannelID, err)
 	}
 }
 
@@ -502,19 +502,19 @@ func createWebSocket(chatroomId uint) (*websocket.Conn, error) {
 
 func startWebSocketMonitor(channel *models.MonitoredChannel) {
 	for {
-		conn, err := createWebSocket(channel.ChatRoomID)
+		conn, err := createWebSocket(channel.ChatroomID)
 		if err != nil {
-			log.Printf("WebSocket connection error for channel %s (ID: %d): %v. Retrying in 5 seconds...", channel.Username, channel.ChatRoomID, err)
+			log.Printf("WebSocket connection error for channel %s (ID: %d): %v. Retrying in 5 seconds...", channel.Username, channel.ChatroomID, err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		log.Printf("WebSocket connected and subscribed for channel: %s (ID: %d)", channel.Username, channel.ChatRoomID)
+		log.Printf("WebSocket connected and subscribed for channel: %s (ID: %d)", channel.Username, channel.ChatroomID)
 
 		// Read messages
 		for {
 			_, message, err := conn.ReadMessage()
 			if err != nil {
-				log.Printf("WebSocket read error for channel %s (ID: %d): %v. Attempting to reconnect...", channel.Username, channel.ChatRoomID, err)
+				log.Printf("WebSocket read error for channel %s (ID: %d): %v. Attempting to reconnect...", channel.Username, channel.ChatroomID, err)
 				conn.Close() // Close connection
 				break
 			}
@@ -532,7 +532,7 @@ func handleWebSocketMessage(channel *models.MonitoredChannel, rawMessage []byte)
 	}
 
 	var currentLivestreamID *uint = nil // Default to null
-	if info, ok := latestLivestream.Load(channel.ID); ok {
+	if info, ok := latestLivestream.Load(channel.ChannelID); ok {
 		livestreamInfo := info.(LatestLivestreamInfo)
 		// Check if the latest livestream data is recent and indicates a live stream
 		if livestreamInfo.IsLive && time.Since(livestreamInfo.FetchTime) <= FetchInterval+LivestreamFreshnessLeeway {
@@ -542,7 +542,7 @@ func handleWebSocketMessage(channel *models.MonitoredChannel, rawMessage []byte)
 
 	switch msg.Event {
 	case "pusher_internal:subscription_succeeded":
-		log.Printf("✅ WebSocket subscription succeeded for channel: %s (ID: %d, ChatRoomID: %d)", channel.Username, channel.ID, channel.ChatRoomID)
+		log.Printf("✅ WebSocket subscription succeeded for channel: %s (ID: %d, ChatroomID : %d)", channel.Username, channel.ChannelID, channel.ChatroomID)
 
 	case "App\\Events\\ChatMessageEvent":
 		// Unmarshal the Data string (which is JSON) into the ChatMessageEventData struct
@@ -617,7 +617,7 @@ func GenerateLivestreamReport(livestreamID uint) error {
 		return fmt.Errorf("failed to find channel for livestream %d: %w", livestreamID, err)
 	}
 
-	channelID := monitoredChannel.ID
+	ChannelID := monitoredChannel.ChannelID
 	channelUsername := monitoredChannel.Username
 
 	var streamActualStartTime time.Time
@@ -674,12 +674,12 @@ func GenerateLivestreamReport(livestreamID uint) error {
 	// 3. Fetch all relevant viewer counts for the channel and time range
 	var viewerCounts []models.LivestreamData
 	if err := db.DB.Where("channel_id = ? AND created_at >= ? AND created_at <= ?",
-		channelID, reportStartTime.Add(-ReportTimeBlock), reportEndTime.Add(ReportTimeBlock)).
+		ChannelID, reportStartTime.Add(-ReportTimeBlock), reportEndTime.Add(ReportTimeBlock)).
 		Order("created_at ASC").
 		Find(&viewerCounts).Error; err != nil {
-		return fmt.Errorf("failed to fetch viewer counts for channel %d: %w", channelID, err)
+		return fmt.Errorf("failed to fetch viewer counts for channel %d: %w", ChannelID, err)
 	}
-	log.Printf("Fetched %d viewer count records for channel %d", len(viewerCounts), channelID)
+	log.Printf("Fetched %d viewer count records for channel %d", len(viewerCounts), ChannelID)
 
 	metrics := NewReportMetrics()
 
@@ -878,7 +878,7 @@ func GenerateLivestreamReport(livestreamID uint) error {
 	spamReport := models.SpamReport{
 		ID:                 uuid.New(),
 		LivestreamReportID: uuid.Nil, // Will be set after livestream report is created
-		ChannelID:          channelID,
+		ChannelID:          ChannelID,
 		LivestreamID:       livestreamID,
 		CreatedAt:          time.Now(),
 	}
@@ -930,7 +930,7 @@ func GenerateLivestreamReport(livestreamID uint) error {
 	report := models.LivestreamReport{
 		ID:              uuid.New(),
 		LivestreamID:    livestreamID,
-		ChannelID:       channelID,
+		ChannelID:       ChannelID,
 		Username:        channelUsername,
 		ReportStartTime: reportStartTime,
 		ReportEndTime:   reportEndTime,
@@ -958,9 +958,9 @@ func GenerateLivestreamReport(livestreamID uint) error {
 		return fmt.Errorf("failed to save livestream report for %d: %w", livestreamID, err)
 	}
 
-	err = UpdateStreamerProfileLivestreams(channelID, report.ID)
+	err = UpdateStreamerProfileLivestreams(ChannelID, report.ID)
 	if err != nil {
-		log.Printf("ERROR: Failed to update streamer profile with new report UUID %s for channel %d: %v", report.ID.String(), channelID, err)
+		log.Printf("ERROR: Failed to update streamer profile with new report UUID %s for channel %d: %v", report.ID.String(), ChannelID, err)
 	}
 
 	spamReport.LivestreamReportID = report.ID
@@ -1049,9 +1049,9 @@ func buildLivestreamsList(channel *models.MonitoredChannel) []uuid.UUID {
 	var livestreamReports []uuid.UUID
 	if err := db.DB.Model(&models.LivestreamReport{}).
 		Select("id").
-		Where("channel_id = ?", channel.ID).
+		Where("channel_id = ?", channel.ChannelID).
 		Pluck("id", &livestreamReports).Error; err != nil {
-		log.Printf("Failed to fetch livestream IDs for channel %d: %v", channel.ID, err)
+		log.Printf("Failed to fetch livestream IDs for channel %d: %v", channel.ChannelID, err)
 	}
 	return livestreamReports
 }
@@ -1111,14 +1111,14 @@ func streamerProfileBuilder(channel *models.MonitoredChannel, kickData KickChann
 	var profile models.StreamerProfile
 	var existingProfile models.StreamerProfile
 
-	result := db.DB.Where("channel_id = ?", channel.ID).First(&existingProfile)
+	result := db.DB.Where("channel_id = ?", channel.ChannelID).First(&existingProfile)
 
 	if result.Error == nil {
 		profile = existingProfile // If exists, load existing data
 	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("database error checking existing profile for channel %d: %w", channel.ID, result.Error)
+		return fmt.Errorf("database error checking existing profile for channel %d: %w", channel.ChannelID, result.Error)
 	} else {
-		profile.ChannelID = channel.ID
+		profile.ChannelID = channel.ChannelID
 	}
 
 	// Populate common fields
@@ -1158,7 +1158,7 @@ func streamerProfileBuilder(channel *models.MonitoredChannel, kickData KickChann
 		profile.Instagram = kickData.User.Instagram
 		profile.ProfilePic = kickData.User.ProfilePic
 	} else {
-		log.Printf("Warning: KickChannelResponse.User is nil for channel %d. Some profile fields will be empty.", channel.ID)
+		log.Printf("Warning: KickChannelResponse.User is nil for channel %d. Some profile fields will be empty.", channel.ChannelID)
 		// Clear fields if User is nil and this is an update
 		profile.Bio = ""
 		profile.Country = ""
@@ -1175,8 +1175,8 @@ func streamerProfileBuilder(channel *models.MonitoredChannel, kickData KickChann
 
 	// Build followers_count timeline from all historical channel_data
 	var allChannelData []models.ChannelData
-	if err := db.DB.Where("channel_id = ?", channel.ID).Order("created_at ASC").Find(&allChannelData).Error; err != nil {
-		log.Printf("Warning: Failed to fetch historical channel_data for followers timeline for channel %d: %v", channel.ID, err)
+	if err := db.DB.Where("channel_id = ?", channel.ChannelID).Order("created_at ASC").Find(&allChannelData).Error; err != nil {
+		log.Printf("Warning: Failed to fetch historical channel_data for followers timeline for channel %d: %v", channel.ChannelID, err)
 		emptyJsonArray, err := json.Marshal([]models.FollowersCountPoint{})
 		if err != nil {
 			log.Fatalf("failed to create an empty array:%v", err)
@@ -1187,7 +1187,7 @@ func streamerProfileBuilder(channel *models.MonitoredChannel, kickData KickChann
 		for _, cd := range allChannelData {
 			var historicalKickResponse KickChannelResponse
 			if err := json.Unmarshal(cd.Data, &historicalKickResponse); err != nil {
-				log.Printf("Warning: Error unmarshalling historical channel_data for followers timeline for channel %d (ID: %s): %v", channel.ID, cd.ID.String(), err)
+				log.Printf("Warning: Error unmarshalling historical channel_data for followers timeline for channel %d (ID: %s): %v", channel.ChannelID, cd.ID.String(), err)
 				continue
 			}
 			followersTimeline = append(followersTimeline, models.FollowersCountPoint{
@@ -1216,38 +1216,38 @@ func streamerProfileBuilder(channel *models.MonitoredChannel, kickData KickChann
 	// Save/Update the StreamerProfile
 	if result.Error == nil {
 		if err := db.DB.Save(&profile).Error; err != nil {
-			return fmt.Errorf("failed to update streamer profile for channel %d: %w", channel.ID, err)
+			return fmt.Errorf("failed to update streamer profile for channel %d: %w", channel.ChannelID, err)
 		}
-		log.Printf("Updated streamer profile for channel %s (ID: %d)", channel.Username, channel.ID)
+		log.Printf("Updated streamer profile for channel %s (ID: %d)", channel.Username, channel.ChannelID)
 	} else {
 		if err := db.DB.Create(&profile).Error; err != nil {
-			return fmt.Errorf("failed to create streamer profile for channel %d: %w", channel.ID, err)
+			return fmt.Errorf("failed to create streamer profile for channel %d: %w", channel.ChannelID, err)
 		}
-		log.Printf("Created streamer profile for channel %s (ID: %d)", channel.Username, channel.ID)
+		log.Printf("Created streamer profile for channel %s (ID: %d)", channel.Username, channel.ChannelID)
 	}
 
 	return nil
 }
 
-func UpdateStreamerProfileLivestreams(channelID uint, newReportUUID uuid.UUID) error {
+func UpdateStreamerProfileLivestreams(ChannelID uint, newReportUUID uuid.UUID) error {
 	var profile models.StreamerProfile
-	if err := db.DB.Where("channel_id = ?", channelID).First(&profile).Error; err != nil {
+	if err := db.DB.Where("channel_id = ?", ChannelID).First(&profile).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Printf("Warning: Streamer profile not found for channel %d. Cannot update livestreams list. Creating empty profile.", channelID)
+			log.Printf("Warning: Streamer profile not found for channel %d. Cannot update livestreams list. Creating empty profile.", ChannelID)
 			return nil
 		}
-		return fmt.Errorf("failed to fetch streamer profile for channel %d to update livestreams: %w", channelID, err)
+		return fmt.Errorf("failed to fetch streamer profile for channel %d to update livestreams: %w", ChannelID, err)
 	}
 
 	// Profile found, unmarshal current Livestreams from []byte to Go-native slice
 	var nativeLivestreams []uuid.UUID
 	if err := json.Unmarshal(profile.Livestreams, &nativeLivestreams); err != nil {
-		return fmt.Errorf("failed to unmarshal existing Livestreams for channel %d: %w", channelID, err)
+		return fmt.Errorf("failed to unmarshal existing Livestreams for channel %d: %w", ChannelID, err)
 	}
 
 	// Check if the UUID is already in the list to prevent duplicates
 	if slices.Contains(nativeLivestreams, newReportUUID) {
-		log.Printf("Livestream report UUID %s already exists in profile for channel %d. Not appending.", newReportUUID.String(), channelID)
+		log.Printf("Livestream report UUID %s already exists in profile for channel %d. Not appending.", newReportUUID.String(), ChannelID)
 		return nil
 	}
 
@@ -1256,15 +1256,15 @@ func UpdateStreamerProfileLivestreams(channelID uint, newReportUUID uuid.UUID) e
 
 	nativeLivestreamsJSON, err := json.Marshal(nativeLivestreams)
 	if err != nil {
-		return fmt.Errorf("failed to marshal updated Livestreams for channel %d: %w", channelID, err)
+		return fmt.Errorf("failed to marshal updated Livestreams for channel %d: %w", ChannelID, err)
 	}
 
 	// assign livestream list to profile
 	profile.Livestreams = nativeLivestreamsJSON
 
 	if err := db.DB.Save(&profile).Error; err != nil {
-		return fmt.Errorf("failed to update streamer profile livestreams for channel %d: %w", channelID, err)
+		return fmt.Errorf("failed to update streamer profile livestreams for channel %d: %w", ChannelID, err)
 	}
-	log.Printf("Added livestream report UUID %s to profile for channel %d", newReportUUID.String(), channelID)
+	log.Printf("Added livestream report UUID %s to profile for channel %d", newReportUUID.String(), ChannelID)
 	return nil
 }

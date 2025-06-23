@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// MonitoredChannel uses the Kick API's channel ID as the primary key
 type MonitoredChannel struct {
 	ChannelID  uint   `gorm:"primaryKey"`
 	ChatroomID uint   `gorm:"unique;notnull"`
@@ -17,7 +16,6 @@ type MonitoredChannel struct {
 	UpdatedAt  time.Time
 }
 
-// ChannelData uses the MonitoredChannel ID as the primary key
 type ChannelData struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey"` // UUID primary key
 	ChannelID uint      `gorm:"not null"`             // Link to MonitoredChannel.ID
@@ -25,7 +23,6 @@ type ChannelData struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"`       // GORM will handle creating the timestamp
 }
 
-// LivestreamData with extracted fields
 type LivestreamData struct {
 	ChannelID    uint `gorm:"primaryKey"` // Primary key part 1, Foreign Key
 	LivestreamID uint `gorm:"primaryKey"` // Primary key part 2, from livestream data 'id'
@@ -44,7 +41,6 @@ type LivestreamData struct {
 
 }
 
-// ChatMessage with composite primary key, chatroom_id, username, and nullable livestream_id
 type ChatMessage struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey"` // Message UUID from data payload
 	ChatroomID      uint      `gorm:"not null"`             // Link to MonitoredChannel.ChatRoomID
@@ -58,7 +54,6 @@ type ChatMessage struct {
 	CreatedAt       time.Time `gorm:"autoCreateTime"`       // Timestamp of when message was processed/saved Extracted Chat Message Fields
 }
 
-// LivestreamReport will store aggregated metrics (updated)
 type LivestreamReport struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
 	LivestreamID    uint      `gorm:"not null"`
@@ -88,7 +83,6 @@ type LivestreamReport struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
 
-// SpamReport will store detailed spam analysis (updated - structural changes)
 type SpamReport struct {
 	ID                 uuid.UUID `gorm:"type:uuid;primaryKey"`
 	LivestreamReportID uuid.UUID `gorm:"type:uuid;not null"`

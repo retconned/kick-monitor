@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"errors" // Import errors package
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,7 +13,7 @@ import (
 	"github.com/retconned/kick-monitor/internal/models"
 	"github.com/retconned/kick-monitor/internal/monitor"
 
-	"github.com/google/uuid" // For parsing UUIDs
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +28,7 @@ type ProcessLivestreamReportRequest struct {
 
 type FullLivestreamReport struct {
 	models.LivestreamReport
-	SpamReport *models.SpamReport `json:"spam_report,omitempty"` // Embed SpamReport or make it nullable
+	SpamReport *models.SpamReport `json:"spam_report,omitempty"`
 }
 
 func AddChannelHandler(w http.ResponseWriter, r *http.Request) {

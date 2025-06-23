@@ -14,7 +14,6 @@ import (
 )
 
 func main() {
-	// Initialize database
 	db.Init()
 
 	var activeChannels []models.MonitoredChannel

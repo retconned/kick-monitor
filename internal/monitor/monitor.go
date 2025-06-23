@@ -3,7 +3,7 @@ package monitor
 import (
 	"bytes"
 	"encoding/json"
-	"errors" // Import errors for gorm.ErrRecordNotFound
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync" // Import sync for mutex
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -56,7 +56,7 @@ type ProxyResponse struct {
 	Solution struct {
 		URL       string            `json:"url"`
 		Status    int               `json:"status"`
-		Cookies   []interface{}     `json:"cookies"`
+		Cookies   []any             `json:"cookies"`
 		UserAgent string            `json:"userAgent"`
 		Headers   map[string]string `json:"headers"`
 		Response  string            `json:"response"` // HTML content
@@ -67,69 +67,69 @@ type ProxyResponse struct {
 }
 
 type KickChannelResponse struct {
-	ID                  int           `json:"id"`
-	UserID              int           `json:"user_id"`
-	Slug                string        `json:"slug"`
-	IsBanned            bool          `json:"is_banned"`
-	PlaybackURL         string        `json:"playback_url"`
-	VodEnabled          bool          `json:"vod_enabled"`
-	SubscriptionEnabled bool          `json:"subscription_enabled"`
-	IsAffiliate         bool          `json:"is_affiliate"`
-	FollowersCount      int           `json:"followers_count"`
-	SubscriberBadges    []interface{} `json:"subscriber_badges"` // Or define a proper struct
+	ID                  int    `json:"id"`
+	UserID              int    `json:"user_id"`
+	Slug                string `json:"slug"`
+	IsBanned            bool   `json:"is_banned"`
+	PlaybackURL         string `json:"playback_url"`
+	VodEnabled          bool   `json:"vod_enabled"`
+	SubscriptionEnabled bool   `json:"subscription_enabled"`
+	IsAffiliate         bool   `json:"is_affiliate"`
+	FollowersCount      int    `json:"followers_count"`
+	SubscriberBadges    []any  `json:"subscriber_badges"` // Or define a proper struct
 	BannerImage         struct {
 		URL string `json:"url"`
 	} `json:"banner_image"`
 	Livestream         *KickLivestream `json:"livestream"` // Pointer to handle null
-	Role               interface{}     `json:"role"`       // Or define a proper struct
+	Role               any             `json:"role"`       // Or define a proper struct
 	Muted              bool            `json:"muted"`
-	FollowerBadges     []interface{}   `json:"follower_badges"`      // Or define a proper struct
-	OfflineBannerImage interface{}     `json:"offline_banner_image"` // Or define a proper struct
+	FollowerBadges     []any           `json:"follower_badges"`      // Or define a proper struct
+	OfflineBannerImage any             `json:"offline_banner_image"` // Or define a proper struct
 	Verified           bool            `json:"verified"`
-	RecentCategories   []interface{}   `json:"recent_categories"` // Or define a proper struct
+	RecentCategories   []any           `json:"recent_categories"` // Or define a proper struct
 	CanHost            bool            `json:"can_host"`
 	User               *User           `json:"user"`
 	Chatroom           *KickChatroom   `json:"chatroom"` // Pointer to handle null
 }
 type User struct {
-	ID              int         `json:"id"`
-	Username        string      `json:"username"`
-	AgreedToTerms   bool        `json:"agreed_to_terms"`
-	EmailVerifiedAt time.Time   `json:"email_verified_at"`
-	Bio             string      `json:"bio"`
-	Country         interface{} `json:"country"`
-	State           interface{} `json:"state"`
-	City            interface{} `json:"city"`
-	Instagram       string      `json:"instagram"`
-	Twitter         string      `json:"twitter"`
-	Youtube         string      `json:"youtube"`
-	Discord         string      `json:"discord"`
-	Tiktok          string      `json:"tiktok"`
-	Facebook        string      `json:"facebook"`
-	ProfilePic      string      `json:"profile_pic"`
+	ID              int       `json:"id"`
+	Username        string    `json:"username"`
+	AgreedToTerms   bool      `json:"agreed_to_terms"`
+	EmailVerifiedAt time.Time `json:"email_verified_at"`
+	Bio             string    `json:"bio"`
+	Country         any       `json:"country"`
+	State           any       `json:"state"`
+	City            any       `json:"city"`
+	Instagram       string    `json:"instagram"`
+	Twitter         string    `json:"twitter"`
+	Youtube         string    `json:"youtube"`
+	Discord         string    `json:"discord"`
+	Tiktok          string    `json:"tiktok"`
+	Facebook        string    `json:"facebook"`
+	ProfilePic      string    `json:"profile_pic"`
 }
 
 type KickLivestream struct {
-	ID            int         `json:"id"`
-	Slug          string      `json:"slug"`
-	ChannelID     int         `json:"channel_id"`
-	CreatedAt     string      `json:"created_at"` // Still string for unmarshalling
-	SessionTitle  string      `json:"session_title"`
-	IsLive        bool        `json:"is_live"`
-	RiskLevelID   interface{} `json:"risk_level_id"`  // Or define a proper struct
-	StartTime     string      `json:"start_time"`     // Still string for unmarshalling
-	Source        interface{} `json:"source"`         // Or define a proper struct
-	TwitchChannel interface{} `json:"twitch_channel"` // Or define a proper struct
-	Duration      int         `json:"duration"`
-	Language      string      `json:"language"`
-	IsMature      bool        `json:"is_mature"`
-	ViewerCount   int         `json:"viewer_count"`
+	ID            int    `json:"id"`
+	Slug          string `json:"slug"`
+	ChannelID     int    `json:"channel_id"`
+	CreatedAt     string `json:"created_at"` // Still string for unmarshalling
+	SessionTitle  string `json:"session_title"`
+	IsLive        bool   `json:"is_live"`
+	RiskLevelID   any    `json:"risk_level_id"`  // Or define a proper struct
+	StartTime     string `json:"start_time"`     // Still string for unmarshalling
+	Source        any    `json:"source"`         // Or define a proper struct
+	TwitchChannel any    `json:"twitch_channel"` // Or define a proper struct
+	Duration      int    `json:"duration"`
+	Language      string `json:"language"`
+	IsMature      bool   `json:"is_mature"`
+	ViewerCount   int    `json:"viewer_count"`
 	Thumbnail     struct {
 		URL string `json:"url"`
 	} `json:"thumbnail"`
 	LangISO    string          `json:"lang_iso"`
 	Tags       json.RawMessage `json:"tags"`       // Use json.RawMessage to keep raw JSON for tags
-	Categories []interface{}   `json:"categories"` // Or define a proper struct
+	Categories []any           `json:"categories"` // Or define a proper struct
 }
 
 type KickChatroom struct {
@@ -179,8 +179,8 @@ type ChatMessageEventData struct {
 		Username string `json:"username"`
 		Slug     string `json:"slug"`
 		Identity struct {
-			Color  string        `json:"color"`
-			Badges []interface{} `json:"badges"`
+			Color  string `json:"color"`
+			Badges []any  `json:"badges"`
 		} `json:"identity"`
 	} `json:"sender"`
 	Metadata json.RawMessage `json:"metadata"` // Use json.RawMessage for metadata
@@ -1132,7 +1132,7 @@ func streamerProfileBuilder(channel *models.MonitoredChannel, kickData KickChann
 	// Populate fields from KickChannelResponse.User
 	if kickData.User != nil {
 		profile.Bio = kickData.User.Bio
-		// Type assertions for interface{} fields (Country, State, City)
+		// Type assertions for any{} fields (Country, State, City)
 		if countryStr, ok := kickData.User.Country.(string); ok {
 			profile.Country = countryStr
 		} else {

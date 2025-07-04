@@ -612,7 +612,7 @@ func MessagePreview(channel *models.MonitoredChannel, chatMessage *models.ChatMe
 func GenerateLivestreamReport(livestreamID uint) error {
 	var monitoredChannel models.MonitoredChannel
 	subQuery := db.DB.Model(&models.LivestreamData{}).Select("channel_id").Where("livestream_id = ?", livestreamID)
-	err := db.DB.Where("id IN (?)", subQuery).First(&monitoredChannel).Error
+	err := db.DB.Where("channel_id IN (?)", subQuery).First(&monitoredChannel).Error
 	if err != nil {
 		return fmt.Errorf("failed to find channel for livestream %d: %w", livestreamID, err)
 	}

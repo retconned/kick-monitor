@@ -43,7 +43,7 @@ func Init() {
 		log.Fatalf("Exhausted retries: Failed to connect to database: %v", err)
 	}
 
-	err = DB.AutoMigrate(&models.MonitoredChannel{}, &models.ChannelData{}, &models.LivestreamData{}, &models.ChatMessage{}, &models.LivestreamReport{}, &models.SpamReport{}, &models.StreamerProfile{})
+	err = DB.AutoMigrate(&models.MonitoredChannel{}, &models.ChannelData{}, &models.LivestreamData{}, &models.ChatMessage{}, &models.LivestreamReport{}, &models.SpamReport{}, &models.StreamerProfile{}, &models.User{})
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schema: %v", err)
 	}

@@ -134,3 +134,12 @@ type StreamerProfile struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
+
+// user account for auth
+type User struct {
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Email        string    `gorm:"unique;not null"`
+	PasswordHash string    `gorm:"type:text;not null;column:password_hash"`
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
+}

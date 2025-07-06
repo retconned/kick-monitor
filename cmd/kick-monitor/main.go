@@ -1,8 +1,12 @@
 package main
 
 import (
-	"log"
-	"os"
+	"context" // For graceful shutdown
+	"errors"
+	"net/http"
+	"os"        // For os.Interrupt, os.Kill, os.Getenv
+	"os/signal" // For signal handling
+	"time"      // For timeouts
 
 	"github.com/retconned/kick-monitor/internal/api"
 	"github.com/retconned/kick-monitor/internal/auth"
@@ -12,14 +16,52 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log" // Import gommon log for structured logger
+	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 )
 
+// CustomHTTPErrorHandler provides a centralized way to handle HTTP errors and return JSON.
+func CustomHTTPErrorHandler(err error, c echo.Context) {
+	report, ok := err.(*echo.HTTPError)
+	if !ok {
+		report = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	// Always log the error (Echo's default logger already does this at WARN level for HTTP errors)
+	// c.Logger().Error(report)
+
+	// Send JSON response
+	if !c.Response().Committed {
+		if report.Internal != nil {
+			c.Logger().Error("Internal error:", report.Internal) // Log internal errors
+		}
+
+		// Map common errors to client-friendly messages or structure
+		message := report.Message
+		if msgStr, isString := message.(string); !isString {
+			message = "An unexpected error occurred" // Generic message if original is not string
+		} else if msgStr == http.StatusText(http.StatusInternalServerError) {
+			message = "An internal server error occurred" // More friendly for 500
+		}
+
+		errorResponse := map[string]interface{}{
+			"message": message,
+			"code":    report.Code,
+		}
+
+		if err := c.JSON(report.Code, errorResponse); err != nil {
+			c.Logger().Error("Failed to send error response:", err)
+		}
+	}
+}
 func main() {
 	db.Init()
 
 	// Initialize JWT Secret for authentication
 	auth.InitAuth()
+
+	e := echo.New()
 
 	// Start monitoring Go routines for active channels
 	var activeChannels []models.MonitoredChannel
@@ -27,18 +69,87 @@ func main() {
 		if err != gorm.ErrRecordNotFound {
 			log.Fatalf("Failed to load active channels: %v", err)
 		}
-		log.Println("No active channels found in the database on startup.")
+		e.Logger.Print("No active channels found in the database on startup.")
 	}
 
 	for _, channel := range activeChannels {
 		go monitor.StartMonitoringChannel(&channel)
 	}
 
-	e := echo.New()
+	// --- Configure Echo Logger (for structured logging) ---
+	e.Logger.SetLevel(log.INFO) // Set default log level (INFO, DEBUG, WARN, ERROR, OFF)
+	// e.Logger.SetOutput(os.Stdout) // Default is os.Stdout, can redirect to file etc.
+	// e.Logger.SetHeader("${time_rfc3339} ${level} ${short_file} ${line}") // Default header, customize if needed
+	// --- Custom Error Handler ---
+	e.HTTPErrorHandler = CustomHTTPErrorHandler
 
-	// --- Global Middleware ---
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover()) // Recovers from panics and serves a 500 error
+	// Logger middleware (using Echo's default for requests)
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: `{"time":"${time_rfc3339}","id":"${id}","remote_ip":"${remote_ip}","host":"${host}",` +
+			`"method":"${method}","uri":"${uri}","user_agent":"${user_agent}",` +
+			`"status":${status},"error":"${error}","latency":"${latency_human}"` +
+			`,"bytes_in":${bytes_in},"bytes_out":${bytes_out}}` + "\n",
+		CustomTimeFormat: "2006-01-02 15:04:05.000",
+		Output:           os.Stdout,
+	}))
+
+	e.Use(middleware.Recover())   // Recovers from panics and serves a 500 error
+	e.Use(middleware.RequestID()) // Assigns a unique ID to each request (useful for tracing logs)
+	e.Use(middleware.Secure())    // Adds basic security headers (X-XSS-Protection, X-Frame-Options, Strict-Transport-Security, X-Content-Type-Options)
+
+	// CORS middleware (configure carefully for production)
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"*"}, // In production, replace "*" with specific frontend origins (e.g., "http://localhost:3000", "https://yourfrontend.com")
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderXCSRFToken}, // Add auth/CSRF headers
+		AllowCredentials: true,
+		MaxAge:           300, // Max age for preflight requests in seconds
+	}))
+
+	// CSRF middleware (optional, for form submissions)
+	// Needs careful implementation with frontend to send CSRF token with requests
+	// e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
+	// 	TokenLookup: "header:X-CSRF-Token", // or "form:_csrf" etc.
+	// 	CookiePath:  "/",
+	// 	CookieHTTPOnly: true,
+	// 	CookieSameSite: http.SameSiteLaxMode, // Adjust for cross-domain if needed
+	// 	CookieSecure: true, // Set to true in HTTPS production
+	// }))
+
+	// Rate Limiter middleware (protect against abuse)
+	// Uses an in-memory store. For production, consider Redis/Memcached stores.
+	// e.Use(middleware.RateLimiter(middleware.RateLimiterConfig{
+	// 	Store: middleware.NewRateLimiterMemoryStore(
+	// 		// 10 requests per second burst, 1 request per second refill rate
+	// 		rate.Limit(10), // Burst limit
+	// 		time.Second,    // Rate interval
+	// 		10,             // Bucket size
+	// 	),
+	// 	ErrorHandler: func(c echo.Context, err error) error {
+	// 		return echo.NewHTTPError(http.StatusTooManyRequests, "Too many requests. Please try again later.")
+	// 	},
+	// 	IdentifierExtractor: middleware.RequestIDExtractor(), // Use RequestID as identifier for rate limiting
+	// 	// Or identify by IP: IdentifierExtractor: middleware.IPExtractor(),
+	// })
+
+	config := middleware.RateLimiterConfig{
+		Skipper: middleware.DefaultSkipper,
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{Rate: rate.Limit(10), Burst: 30, ExpiresIn: 3 * time.Minute},
+		),
+		IdentifierExtractor: func(ctx echo.Context) (string, error) {
+			id := ctx.RealIP()
+			return id, nil
+		},
+		ErrorHandler: func(context echo.Context, err error) error {
+			return context.JSON(http.StatusForbidden, nil)
+		},
+		DenyHandler: func(context echo.Context, identifier string, err error) error {
+			return context.JSON(http.StatusTooManyRequests, nil)
+		},
+	}
+
+	e.Use(middleware.RateLimiterWithConfig(config))
 
 	// public routes start here
 	e.POST("/register", auth.RegisterHandler)
@@ -63,10 +174,30 @@ func main() {
 	r.Use(auth.AuthMiddleware())
 	r.POST("/add_channel", api.AddChannelHandler) // /protected/add_channel
 
+	// Start server with graceful shutdown
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // Default port
+		port = "8080"
 	}
-	log.Printf("Starting server on :%s", port)
-	e.Logger.Fatal(e.Start(":" + port)) // Use e.Logger.Fatal for Echo's logger
+
+	// Start server in a goroutine
+	go func() {
+		if err := e.Start(":" + port); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			e.Logger.Fatalf("shutting down the server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shut down the server
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, os.Kill)
+	<-quit // Blocks until signal is received
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // 10 seconds timeout for shutdown
+	defer cancel()
+	if err := e.Shutdown(ctx); err != nil {
+		e.Logger.Fatal(err)
+	}
+	e.Logger.Print("Server shut down gracefully.")
+	// log.Printf("Starting server on :%s", port)
+	// e.Logger.Fatal(e.Start(":" + port)) // Use e.Logger.Fatal for Echo's logger
 }

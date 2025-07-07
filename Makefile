@@ -13,7 +13,7 @@ build:
 
 dev:
 	@echo "Running application..."
-	DB_HOST=$(DEV_DB_HOST) DB_PORT=$(DEV_DB_PORT) DB_USER=$(DEV_DB_USER) DB_PASSWORD=$(DEV_DB_PASSWORD) DB_NAME=$(DEV_DB_NAME) PROXY_URL=$(DEV_PROXY_URL) go run cmd/kick-monitor/main.go
+	DB_HOST=$(DEV_DB_HOST) DB_PORT=$(DEV_DB_PORT) DB_USER=$(DEV_DB_USER) DB_PASSWORD=$(DEV_DB_PASSWORD) DB_NAME=$(DEV_DB_NAME) PROXY_URL=$(DEV_PROXY_URL) JWT_SECRET=$(JWT_SECRET) go run cmd/kick-monitor/main.go
 
 dev-air:
 	@echo "Running application in development mode with hot reloading (using air)..."
@@ -24,6 +24,7 @@ dev-air:
 	DB_PASSWORD=$(DEV_DB_PASSWORD) \
 	DB_NAME=$(DEV_DB_NAME) \
 	PROXY_URL=$(DEV_PROXY_URL) \
+	JWT_SECRET=$(JWT_SECRET) \
 	air .
 
 test:

@@ -74,7 +74,7 @@ type LivestreamReport struct {
 	UniqueChatters   int `gorm:"not null;default:0"`
 	MessagesFromApps int `gorm:"not null;default:0"`
 
-	SpamReportID *uuid.UUID `gorm:"type:uuid"` // Moved before timelines
+	SpamReportID *uuid.UUID `gorm:"type:uuid"`
 
 	// Timelines
 	ViewerCountsTimeline  []byte `gorm:"type:jsonb"`

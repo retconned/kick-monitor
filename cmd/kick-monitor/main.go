@@ -158,7 +158,6 @@ func main() {
 	e.POST("/process_livestream_report", api.ProcessLivestreamReportHandler) // This is asynchronous, can be public
 
 	// Reports API
-	// e.GET("/reports/:reportUUID", api.GetReportByUUIDHandler) - specific route for single UUID
 	// Group these routes with common prefixes
 	e.GET("/reports/:reportUUID", api.GetReportByUUIDHandler)                        // /reports/uuid-string
 	e.GET("/channels/:channelID/reports", api.GetReportsByChannelIDHandler)          // /channels/id/reports
@@ -166,8 +165,7 @@ func main() {
 
 	// Channels Info API
 	// e.GET("/channels", api.GetMonitoredChannelsHandler) // /channels (list all monitored)
-	// e.GET("/channels/:channelID/info", api.GetChannelInfoHandler) // /channels/id/info (latest raw data snapshot) // i don't think this should be a thing
-	// e.GET("/channels/:channelID/profile", api.GetStreamerProfileHandler) // /channels/id/profile (aggregated profile)
+	e.GET("/channels/profile/:username", api.GetStreamerProfileHandler) // /channels/id/profile (aggregated profile)
 
 	// proeteced routes start here
 	r := e.Group("/protected")
@@ -198,6 +196,4 @@ func main() {
 		e.Logger.Fatal(err)
 	}
 	e.Logger.Print("Server shut down gracefully.")
-	// log.Printf("Starting server on :%s", port)
-	// e.Logger.Fatal(e.Start(":" + port)) // Use e.Logger.Fatal for Echo's logger
 }

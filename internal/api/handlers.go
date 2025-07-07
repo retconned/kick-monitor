@@ -12,7 +12,7 @@ import (
 	"github.com/retconned/kick-monitor/internal/monitor"
 
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4" // Import echo
+	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
@@ -30,7 +30,6 @@ type FullLivestreamReport struct {
 	SpamReport *models.SpamReport `json:"spam_report,omitempty"`
 }
 
-// AddChannelHandler now takes echo.Context
 func AddChannelHandler(c echo.Context) error {
 	req := new(AddChannelRequest)
 	if err := c.Bind(req); err != nil {
@@ -51,7 +50,6 @@ func AddChannelHandler(c echo.Context) error {
 			log.Printf("Updated is_active status for channel %s to %t", req.Username, req.IsActive)
 
 			if req.IsActive {
-				// go monitor.ProcessChannelData(existingChannel)
 				go monitor.StartMonitoringChannel(&existingChannel)
 
 			}
@@ -239,30 +237,22 @@ func GetChannelInfoHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, latestChannelData)
 }
 
-// GetStreamerProfileHandler now takes echo.Context
-// func GetStreamerProfileHandler(c echo.Context) error {
-// 	channelIDStr := c.Param("channelID") // Use c.Param for path variables
-// 	channelID, err := strconv.ParseUint(channelIDStr, 10, 64)
-// 	if err != nil {
-// 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid channel ID format"})
-// 	}
-//
-// 	var dbProfile models.StreamerProfile
-// 	if err := db.DB.Where("channel_id = ?", channelID).First(&dbProfile).Error; err != nil {
-// 		if errors.Is(err, gorm.ErrRecordNotFound) {
-// 			return c.JSON(http.StatusNotFound, map[string]string{"message": "Streamer profile not found (data might not have been collected yet)"})
-// 		} else {
-// 			log.Printf("Error fetching streamer profile for channel %d: %v", channelID, err)
-// 			return c.JSON(http.StatusInternalServerError, map[string]string{"message": fmt.Sprintf("Failed to fetch streamer profile: %v", err)})
-// 		}
-// 	}
-//
-// 	// Convert DB model (with []byte JSONB fields) to API model (with native Go types)
-// 	apiProfile, err := monitor.ConvertDBProfileToAPIProfile(dbProfile)
-// 	if err != nil {
-// 		log.Printf("Error converting DB profile to API profile for channel %d: %v", channelID, err)
-// 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to prepare streamer profile for response"})
-// 	}
-//
-// 	return c.JSON(http.StatusOK, apiProfile)
-// }
+func GetStreamerProfileHandler(c echo.Context) error { // Changed to echo.Context
+	username := c.Param("username")
+
+	if username == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Username is required in the path"})
+	}
+
+	// Call the monitor package to build the complete API-ready profile using the username
+	apiProfile, err := monitor.GetStreamerProfile(username)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.JSON(http.StatusNotFound, map[string]string{"message": fmt.Sprintf("Streamer profile not found for username '%s'", username)})
+		}
+		log.Printf("Error fetcheing streamer profile for username '%s': %v", username, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": fmt.Sprintf("Failed to build streamer profile: %v", err)})
+	}
+
+	return c.JSON(http.StatusOK, apiProfile)
+}

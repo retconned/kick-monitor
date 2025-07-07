@@ -274,6 +274,62 @@ func NewReportMetrics() *ReportMetrics {
 	}
 }
 
+type LivestreamReportRestructured struct {
+	LivestreamID          int             `json:"LivestreamID"`
+	ReportStartTime       time.Time       `json:"ReportStartTime"`
+	ReportEndTime         time.Time       `json:"ReportEndTime"`
+	DurationMinutes       int             `json:"DurationMinutes"`
+	AverageViewers        int             `json:"AverageViewers"`
+	PeakViewers           int             `json:"PeakViewers"`
+	LowestViewers         int             `json:"LowestViewers"`
+	Engagement            float64         `json:"Engagement"`
+	TotalMessages         int             `json:"TotalMessages"`
+	UniqueChatters        int             `json:"UniqueChatters"`
+	MessagesFromApps      int             `json:"MessagesFromApps"`
+	ViewerCountsTimeline  json.RawMessage `json:"ViewerCountsTimeline"`
+	MessageCountsTimeline json.RawMessage `json:"MessageCountsTimeline"`
+	CreatedAt             time.Time       `json:"CreatedAt"`
+}
+
+type FullLivestreamReportForProfile struct {
+	LivestreamReportRestructured
+	SpamReport SpamReportRestructured `json:"spam_report"`
+}
+
+type StreamerProfileAPI struct {
+	ChannelID           uint                             `json:"channel_id"`
+	Username            string                           `json:"username"`
+	Verified            bool                             `json:"verified"`
+	IsBanned            bool                             `json:"is_banned"`
+	VodEnabled          bool                             `json:"vod_enabled"`
+	IsAffiliate         bool                             `json:"is_affiliate"`
+	SubscriptionEnabled bool                             `json:"subscription_enabled"`
+	FollowersCount      []models.FollowersCountPoint     `json:"followers_count"`
+	Livestreams         []FullLivestreamReportForProfile `json:"livestreams"`
+
+	Bio        string `json:"bio,omitempty"`
+	City       string `json:"city,omitempty"`
+	State      string `json:"state,omitempty"`
+	TikTok     string `json:"tiktok,omitempty"`
+	Country    string `json:"country,omitempty"`
+	Discord    string `json:"discord,omitempty"`
+	Twitter    string `json:"twitter,omitempty"`
+	YouTube    string `json:"youtube,omitempty"`
+	Facebook   string `json:"facebook,omitempty"`
+	Instagram  string `json:"instagram,omitempty"`
+	ProfilePic string `json:"profile_pic,omitempty"`
+}
+
+type SpamReportRestructured struct {
+	MessagesWithEmotes         int             `json:"MessagesWithEmotes"`
+	MessagesMultipleEmotesOnly int             `json:"MessagesMultipleEmotesOnly"`
+	DuplicateMessagesCount     int             `json:"DuplicateMessagesCount"`
+	RepetitivePhrasesCount     int             `json:"RepetitivePhrasesCount"`
+	ExactDuplicateBursts       json.RawMessage `json:"ExactDuplicateBursts"`
+	SimilarMessageBursts       json.RawMessage `json:"SimilarMessageBursts"`
+	SuspiciousChatters         json.RawMessage `json:"SuspiciousChatters"`
+}
+
 // StartMonitoringChannel initiates the data fetching and WebSocket routines for a channel.
 func StartMonitoringChannel(channel *models.MonitoredChannel) {
 	log.Printf("Starting monitoring for channel: %s (ID: %d)", channel.Username, channel.ChannelID)
@@ -553,7 +609,7 @@ func handleWebSocketMessage(channel *models.MonitoredChannel, rawMessage []byte)
 		}
 
 		// Parse the message send time using the correct format
-		messageSendTime, err := time.Parse("2006-01-02T15:04:05Z07:00", chatMsgData.CreatedAt) // Correct format string
+		messageSendTime, err := time.Parse("2006-01-02T15:04:0GetStreamerAPIProfile5Z07:00", chatMsgData.CreatedAt) // Correct format string
 		if err != nil {
 			log.Printf("Error parsing chat message created_at timestamp for %s: %v, value: %s", channel.Username, err, chatMsgData.CreatedAt)
 		}
@@ -656,6 +712,7 @@ func GenerateLivestreamReport(livestreamID uint) error {
 
 	// If streamActualStartTime was not found or is later than minMessageTime, use minMessageTime
 	if streamActualStartTime.IsZero() || streamActualStartTime.After(reportStartTime) {
+
 		streamActualStartTime = reportStartTime
 	}
 
@@ -874,7 +931,7 @@ func GenerateLivestreamReport(livestreamID uint) error {
 		return metrics.SimilarMessageBursts[i].Count > metrics.SimilarMessageBursts[j].Count
 	})
 
-	// Create Spam Report
+	// Create Spam Report							ID: string(report.ID),
 	spamReport := models.SpamReport{
 		ID:                 uuid.New(),
 		LivestreamReportID: uuid.Nil, // Will be set after livestream report is created
@@ -1267,4 +1324,108 @@ func UpdateStreamerProfileLivestreams(ChannelID uint, newReportUUID uuid.UUID) e
 	}
 	log.Printf("Added livestream report UUID %s to profile for channel %d", newReportUUID.String(), ChannelID)
 	return nil
+}
+
+func GetStreamerProfile(username string) (StreamerProfileAPI, error) {
+	var apiProfile StreamerProfileAPI
+
+	var dbProfile models.StreamerProfile
+	if err := db.DB.Where("username = ?", username).First(&dbProfile).Error; err != nil {
+		return StreamerProfileAPI{}, fmt.Errorf("failed to fetch StreamerProfile from DB for channel %v: %w", username, err)
+	}
+
+	// Copy direct fields (these are already non-JSONB)
+	apiProfile.ChannelID = dbProfile.ChannelID
+	apiProfile.Username = dbProfile.Username
+	apiProfile.Verified = dbProfile.Verified
+	apiProfile.IsBanned = dbProfile.IsBanned
+	apiProfile.VodEnabled = dbProfile.VodEnabled
+	apiProfile.IsAffiliate = dbProfile.IsAffiliate
+	apiProfile.SubscriptionEnabled = dbProfile.SubscriptionEnabled
+	apiProfile.Bio = dbProfile.Bio
+	apiProfile.City = dbProfile.City
+	apiProfile.State = dbProfile.State
+	apiProfile.TikTok = dbProfile.TikTok
+	apiProfile.Country = dbProfile.Country
+	apiProfile.Discord = dbProfile.Discord
+	apiProfile.Twitter = dbProfile.Twitter
+	apiProfile.YouTube = dbProfile.YouTube
+	apiProfile.Facebook = dbProfile.Facebook
+	apiProfile.Instagram = dbProfile.Instagram
+	apiProfile.ProfilePic = dbProfile.ProfilePic
+
+	// Unmarshal JSONB fields from DB []byte into Go-native types for API
+	var followersTimeline []models.FollowersCountPoint
+	if len(dbProfile.FollowersCount) > 0 {
+		if err := json.Unmarshal(dbProfile.FollowersCount, &followersTimeline); err != nil {
+			log.Printf("Warning: Failed to unmarshal FollowersCount for channel %d from DB: %v", dbProfile.ChannelID, err)
+			followersTimeline = []models.FollowersCountPoint{}
+		}
+	} else {
+		followersTimeline = []models.FollowersCountPoint{}
+	}
+	apiProfile.FollowersCount = followersTimeline
+
+	var livestreamUUIDs []uuid.UUID
+	if len(dbProfile.Livestreams) > 0 {
+		if err := json.Unmarshal(dbProfile.Livestreams, &livestreamUUIDs); err != nil {
+			log.Printf("Warning: Failed to unmarshal Livestreams for channel %d from DB: %v", dbProfile.ChannelID, err)
+			livestreamUUIDs = []uuid.UUID{}
+		}
+	} else {
+		livestreamUUIDs = []uuid.UUID{}
+	}
+
+	// Fetch associated LivestreamReports and their SpamReports
+	var fetchedReports []FullLivestreamReportForProfile
+	if len(livestreamUUIDs) > 0 {
+		var reports []models.LivestreamReport
+		if err := db.DB.Where("id IN (?)", livestreamUUIDs).Order("report_start_time DESC").Find(&reports).Error; err != nil {
+			log.Printf("Warning: Failed to fetch LivestreamReports for channel %d: %v", dbProfile.ChannelID, err)
+		} else {
+			fetchedReports = make([]FullLivestreamReportForProfile, 0, len(reports))
+			for _, report := range reports {
+				fullReport := FullLivestreamReportForProfile{
+					LivestreamReportRestructured: LivestreamReportRestructured{
+						LivestreamID:          int(report.LivestreamID),
+						ReportStartTime:       report.ReportStartTime,
+						DurationMinutes:       report.DurationMinutes,
+						AverageViewers:        report.AverageViewers,
+						PeakViewers:           report.PeakViewers,
+						LowestViewers:         report.LowestViewers,
+						Engagement:            report.Engagement,
+						TotalMessages:         report.TotalMessages,
+						UniqueChatters:        report.UniqueChatters,
+						MessagesFromApps:      report.MessagesFromApps,
+						ViewerCountsTimeline:  report.ViewerCountsTimeline,
+						MessageCountsTimeline: report.MessageCountsTimeline,
+						CreatedAt:             report.CreatedAt,
+					},
+				}
+				if report.SpamReportID != nil {
+					var spamReport models.SpamReport
+					if err := db.DB.Where("id = ?", report.SpamReportID).First(&spamReport).Error; err != nil {
+						log.Printf("Warning: Failed to fetch spam report %s for report %s: %v", report.SpamReportID.String(), report.ID.String(), err)
+
+					} else {
+
+						fullReport.SpamReport = SpamReportRestructured{
+							MessagesWithEmotes:         spamReport.MessagesWithEmotes,
+							MessagesMultipleEmotesOnly: spamReport.MessagesWithEmotes,
+							DuplicateMessagesCount:     spamReport.DuplicateMessagesCount,
+							RepetitivePhrasesCount:     spamReport.RepetitivePhrasesCount,
+							ExactDuplicateBursts:       spamReport.ExactDuplicateBursts,
+							SimilarMessageBursts:       spamReport.SimilarMessageBursts,
+							SuspiciousChatters:         spamReport.SuspiciousChatters,
+						}
+					}
+				}
+				fetchedReports = append(fetchedReports, fullReport)
+			}
+		}
+	}
+	apiProfile.Livestreams = fetchedReports
+
+	return apiProfile, nil
+
 }

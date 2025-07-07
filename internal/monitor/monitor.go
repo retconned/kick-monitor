@@ -609,7 +609,7 @@ func handleWebSocketMessage(channel *models.MonitoredChannel, rawMessage []byte)
 		}
 
 		// Parse the message send time using the correct format
-		messageSendTime, err := time.Parse("2006-01-02T15:04:0GetStreamerAPIProfile5Z07:00", chatMsgData.CreatedAt) // Correct format string
+		messageSendTime, err := time.Parse("2006-01-02T15:04:05Z07:00", chatMsgData.CreatedAt) // Correct format string
 		if err != nil {
 			log.Printf("Error parsing chat message created_at timestamp for %s: %v, value: %s", channel.Username, err, chatMsgData.CreatedAt)
 		}

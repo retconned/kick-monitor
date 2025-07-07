@@ -205,7 +205,6 @@ func GetReportsByLivestreamIDHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, fullReports)
 }
 
-// GetMonitoredChannelsHandler handles GET /channels
 func GetMonitoredChannelsHandler(c echo.Context) error {
 	var channels []models.MonitoredChannel
 	if err := db.DB.Order("username ASC").Find(&channels).Error; err != nil {
@@ -215,7 +214,6 @@ func GetMonitoredChannelsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, channels)
 }
 
-// GetChannelInfoHandler handles GET /channels/{channel_id}/info (latest snapshot)
 func GetChannelInfoHandler(c echo.Context) error {
 	channelIDStr := c.Param("channelID") // Use c.Param for path variables
 	channelID, err := strconv.ParseUint(channelIDStr, 10, 64)
@@ -237,14 +235,13 @@ func GetChannelInfoHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, latestChannelData)
 }
 
-func GetStreamerProfileHandler(c echo.Context) error { // Changed to echo.Context
+func GetStreamerProfileHandler(c echo.Context) error {
 	username := c.Param("username")
 
 	if username == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Username is required in the path"})
 	}
 
-	// Call the monitor package to build the complete API-ready profile using the username
 	apiProfile, err := monitor.GetStreamerProfile(username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

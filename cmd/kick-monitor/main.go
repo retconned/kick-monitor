@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context" // For graceful shutdown
+	"context"
 	"errors"
 	"net/http"
-	"os"        // For os.Interrupt, os.Kill, os.Getenv
-	"os/signal" // For signal handling
-	"time"      // For timeouts
+	"os"
+	"os/signal"
+	"time"
 
 	"github.com/retconned/kick-monitor/internal/api"
 	"github.com/retconned/kick-monitor/internal/auth"
@@ -16,20 +16,16 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log" // Import gommon log for structured logger
+	"github.com/labstack/gommon/log"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 )
 
-// CustomHTTPErrorHandler provides a centralized way to handle HTTP errors and return JSON.
 func CustomHTTPErrorHandler(err error, c echo.Context) {
 	report, ok := err.(*echo.HTTPError)
 	if !ok {
 		report = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-
-	// Always log the error (Echo's default logger already does this at WARN level for HTTP errors)
-	// c.Logger().Error(report)
 
 	// Send JSON response
 	if !c.Response().Committed {
@@ -45,7 +41,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 			message = "An internal server error occurred" // More friendly for 500
 		}
 
-		errorResponse := map[string]interface{}{
+		errorResponse := map[string]any{
 			"message": message,
 			"code":    report.Code,
 		}
@@ -76,10 +72,8 @@ func main() {
 		go monitor.StartMonitoringChannel(&channel)
 	}
 
-	// --- Configure Echo Logger (for structured logging) ---
-	e.Logger.SetLevel(log.INFO) // Set default log level (INFO, DEBUG, WARN, ERROR, OFF)
-	// e.Logger.SetOutput(os.Stdout) // Default is os.Stdout, can redirect to file etc.
-	// e.Logger.SetHeader("${time_rfc3339} ${level} ${short_file} ${line}") // Default header, customize if needed
+	e.Logger.SetLevel(log.INFO) // (INFO, DEBUG, WARN, ERROR, OFF)
+
 	// --- Custom Error Handler ---
 	e.HTTPErrorHandler = CustomHTTPErrorHandler
 
@@ -95,13 +89,14 @@ func main() {
 
 	e.Use(middleware.Recover())   // Recovers from panics and serves a 500 error
 	e.Use(middleware.RequestID()) // Assigns a unique ID to each request (useful for tracing logs)
-	e.Use(middleware.Secure())    // Adds basic security headers (X-XSS-Protection, X-Frame-Options, Strict-Transport-Security, X-Content-Type-Options)
+	e.Use(middleware.Secure())
 
 	// CORS middleware (configure carefully for production)
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"*"}, // In production, replace "*" with specific frontend origins (e.g., "http://localhost:3000", "https://yourfrontend.com")
+		AllowOrigins: []string{"*"}, //TODO: switch it to  "https://yourfrontend.com" when its production
+
 		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderXCSRFToken}, // Add auth/CSRF headers
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderXCSRFToken},
 		AllowCredentials: true,
 		MaxAge:           300, // Max age for preflight requests in seconds
 	}))
@@ -116,22 +111,7 @@ func main() {
 	// 	CookieSecure: true, // Set to true in HTTPS production
 	// }))
 
-	// Rate Limiter middleware (protect against abuse)
-	// Uses an in-memory store. For production, consider Redis/Memcached stores.
-	// e.Use(middleware.RateLimiter(middleware.RateLimiterConfig{
-	// 	Store: middleware.NewRateLimiterMemoryStore(
-	// 		// 10 requests per second burst, 1 request per second refill rate
-	// 		rate.Limit(10), // Burst limit
-	// 		time.Second,    // Rate interval
-	// 		10,             // Bucket size
-	// 	),
-	// 	ErrorHandler: func(c echo.Context, err error) error {
-	// 		return echo.NewHTTPError(http.StatusTooManyRequests, "Too many requests. Please try again later.")
-	// 	},
-	// 	IdentifierExtractor: middleware.RequestIDExtractor(), // Use RequestID as identifier for rate limiting
-	// 	// Or identify by IP: IdentifierExtractor: middleware.IPExtractor(),
-	// })
-
+	// Rate Limiter middleware
 	config := middleware.RateLimiterConfig{
 		Skipper: middleware.DefaultSkipper,
 		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
@@ -164,15 +144,13 @@ func main() {
 	e.GET("/livestreams/:livestreamID/reports", api.GetReportsByLivestreamIDHandler) // /livestreams/id/reports
 
 	// Channels Info API
-	// e.GET("/channels", api.GetMonitoredChannelsHandler) // /channels (list all monitored)
 	e.GET("/channels/profile/:username", api.GetStreamerProfileHandler) // /channels/id/profile (aggregated profile)
 
 	// proeteced routes start here
 	r := e.Group("/protected")
 	r.Use(auth.AuthMiddleware())
-	r.POST("/add_channel", api.AddChannelHandler) // /protected/add_channel
+	r.POST("/add_channel", api.AddChannelHandler)
 
-	// Start server with graceful shutdown
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

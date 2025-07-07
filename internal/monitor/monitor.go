@@ -1354,7 +1354,6 @@ func GetStreamerProfile(username string) (StreamerProfileAPI, error) {
 	apiProfile.Instagram = dbProfile.Instagram
 	apiProfile.ProfilePic = dbProfile.ProfilePic
 
-	// Unmarshal JSONB fields from DB []byte into Go-native types for API
 	var followersTimeline []models.FollowersCountPoint
 	if len(dbProfile.FollowersCount) > 0 {
 		if err := json.Unmarshal(dbProfile.FollowersCount, &followersTimeline); err != nil {

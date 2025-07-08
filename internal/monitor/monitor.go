@@ -29,7 +29,6 @@ import (
 
 const (
 	FetchInterval = 2 * time.Minute
-	ProxyURL      = "http://localhost:8191/v1"                         // Proxy URL for API calls
 	WebSocketURL  = "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679" // Base WebSocket URL
 	// Leeway for considering livestream data current
 	LivestreamFreshnessLeeway = 20 * time.Second // 2 minutes + 20 seconds
@@ -48,6 +47,8 @@ const (
 	RapidMessageBurstWindow   = 3 * time.Second // Time window for rapid messages by a user
 	RapidMessageBurstMinCount = 5               // Min messages by same user in window for rapid burst
 )
+
+var ProxyURL string
 
 // Structs for proxy response and Kick API data
 type ProxyResponse struct {
@@ -330,6 +331,14 @@ type SpamReportRestructured struct {
 	SuspiciousChatters         json.RawMessage `json:"SuspiciousChatters"`
 }
 
+func SetProxyURL(url string) error {
+	if url == "" {
+		return fmt.Errorf("apiclient: provided ProxyURL cannot be empty")
+	}
+	ProxyURL = url
+	return nil
+}
+
 // StartMonitoringChannel initiates the data fetching and WebSocket routines for a channel.
 func StartMonitoringChannel(channel *models.MonitoredChannel) {
 	log.Printf("Starting monitoring for channel: %s (ID: %d)", channel.Username, channel.ChannelID)
@@ -345,6 +354,9 @@ func FetchChannelData(username string) (*KickChannelResponse, error) {
 	log.Printf("Fetching data for channel: %s via proxy", username)
 	apiURL := fmt.Sprintf("https://kick.com/api/v2/channels/%s", username)
 
+	if ProxyURL == "" {
+		return nil, fmt.Errorf("ProxyURL not configured.")
+	}
 	proxyReqPayload := ProxyRequestPayload{
 		Cmd:        "request.get",
 		URL:        apiURL,
@@ -405,7 +417,7 @@ func fetchDataAndPersist(channel *models.MonitoredChannel) {
 
 // ProcessChannelData: fetches, prints, and persists channel and livestream data, AND updates StreamerProfile
 func processChannelData(channel *models.MonitoredChannel) { // Takes MonitoredChannel by value
-	log.Printf("Processing data for channel: %s (ID: %d, ChatroomID : %d)", channel.Username, channel.ChannelID, channel.ChatroomID)
+	// log.Printf("Processing data for channel: %s (ID: %d, ChatroomID : %d)", channel.Username, channel.ChannelID, channel.ChatroomID)
 	apiURL := fmt.Sprintf("https://kick.com/api/v2/channels/%s", channel.Username)
 
 	proxyReqPayload := ProxyRequestPayload{

@@ -38,14 +38,11 @@ type HealthCheckResponse struct {
 	Message   string `json:"message"`
 }
 
-// HealthCheckHandler provides a basic liveness status for the Echo server.
-// It simply confirms the server is running and can respond to requests.
 func HealthCheckHandler(c echo.Context) error {
-	// If this handler is reached, it means Echo is running and processing requests.
 	response := HealthCheckResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().Format(time.RFC3339),
-		Message:   "kick-monitor is alive and well!",
+		Message:   "kick-monitor is alive",
 	}
 	return c.JSON(http.StatusOK, response)
 }

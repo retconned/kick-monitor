@@ -31,7 +31,6 @@ type FullLivestreamReport struct {
 	SpamReport *models.SpamReport `json:"spam_report,omitempty"`
 }
 
-// Simplified HealthCheckResponse for basic liveness.
 type HealthCheckResponse struct {
 	Status    string `json:"status"`
 	Timestamp string `json:"timestamp"`

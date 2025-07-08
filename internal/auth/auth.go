@@ -3,22 +3,19 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"github.com/retconned/kick-monitor/internal/db"
+	"github.com/retconned/kick-monitor/internal/models"
 	"log"
-	"net/http" // Required for HTTP status codes
+	"net/http"
+	"os"
+	"time"
 
-	"os"   // For reading environment variables
-	"time" // For JWT expiration
-
-	"github.com/retconned/kick-monitor/internal/db"     // Your database connection
-	"github.com/retconned/kick-monitor/internal/models" // Your user model
-
-	"github.com/golang-jwt/jwt/v5"            // The JWT library
-	"github.com/google/uuid"                  // For UUID generation
-	echojwt "github.com/labstack/echo-jwt/v4" // <--- CRITICAL CHANGE: NEW IMPORT AND ALIAS
-	"github.com/labstack/echo/v4"             // Echo framework
-	// "github.com/labstack/echo/v4/middleware" // <--- CRITICAL CHANGE: ADD 'middleware' ALIAS HERE
-	"golang.org/x/crypto/bcrypt" // For password hashing
-	"gorm.io/gorm"               // GORM for database operations
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	echojwt "github.com/labstack/echo-jwt/v4"
+	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // JwtCustomClaims defines the custom claims for your JWT token.

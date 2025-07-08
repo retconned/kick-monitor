@@ -25,7 +25,6 @@ import (
 func main() {
 	db.Init()
 
-	// Initialize JWT Secret for authentication
 	auth.InitAuth()
 
 	proxyURLEnv := os.Getenv("PROXY_URL")

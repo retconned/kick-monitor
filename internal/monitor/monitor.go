@@ -30,6 +30,7 @@ import (
 const (
 	FetchInterval = 2 * time.Minute
 	WebSocketURL  = "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679" // Base WebSocket URL
+
 	// Leeway for considering livestream data current
 	LivestreamFreshnessLeeway = 20 * time.Second // 2 minutes + 20 seconds
 	ReportTimeBlock           = 2 * time.Minute  // Viewer count timeline interval

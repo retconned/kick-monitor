@@ -29,9 +29,9 @@
 	RUN echo "🔨 Building the Go application..." && \
 			CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o kick-monitor cmd/kick-monitor/main.go
 
-	# ----------------------------
-	# 🚀 Final Stage
-	# ----------------------------
+# ----------------------------
+# 🚀 Final stage*
+# ----------------------------
 	FROM alpine:latest
 
 	# Install CA certificates

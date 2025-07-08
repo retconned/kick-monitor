@@ -13,6 +13,7 @@ import (
 	"github.com/retconned/kick-monitor/internal/db"
 	"github.com/retconned/kick-monitor/internal/models"
 	"github.com/retconned/kick-monitor/internal/monitor"
+	"github.com/retconned/kick-monitor/internal/util"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -21,43 +22,22 @@ import (
 	"gorm.io/gorm"
 )
 
-func CustomHTTPErrorHandler(err error, c echo.Context) {
-	report, ok := err.(*echo.HTTPError)
-	if !ok {
-		report = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	// Send JSON response
-	if !c.Response().Committed {
-		if report.Internal != nil {
-			c.Logger().Error("Internal error:", report.Internal) // Log internal errors
-		}
-
-		// Map common errors to client-friendly messages or structure
-		message := report.Message
-		if msgStr, isString := message.(string); !isString {
-			message = "An unexpected error occurred" // Generic message if original is not string
-		} else if msgStr == http.StatusText(http.StatusInternalServerError) {
-			message = "An internal server error occurred" // More friendly for 500
-		}
-
-		errorResponse := map[string]any{
-			"message": message,
-			"code":    report.Code,
-		}
-
-		if err := c.JSON(report.Code, errorResponse); err != nil {
-			c.Logger().Error("Failed to send error response:", err)
-		}
-	}
-}
 func main() {
 	db.Init()
 
 	// Initialize JWT Secret for authentication
 	auth.InitAuth()
 
+	proxyURLEnv := os.Getenv("PROXY_URL")
+	if proxyURLEnv == "" {
+		log.Fatal("PROXY_URL environment variable is not set. Please set it in your environment or docker-compose.yml.")
+	}
+	log.Printf("Resolved PROXY_URL from environment: %s", proxyURLEnv)
+
 	e := echo.New()
+
+	monitor.SetProxyURL(proxyURLEnv)
+	e.Logger.Print("Proxy URL successfully configured.")
 
 	// Start monitoring Go routines for active channels
 	var activeChannels []models.MonitoredChannel
@@ -75,7 +55,7 @@ func main() {
 	e.Logger.SetLevel(log.INFO) // (INFO, DEBUG, WARN, ERROR, OFF)
 
 	// --- Custom Error Handler ---
-	e.HTTPErrorHandler = CustomHTTPErrorHandler
+	e.HTTPErrorHandler = util.CustomHTTPErrorHandler
 
 	// Logger middleware (using Echo's default for requests)
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
@@ -130,6 +110,9 @@ func main() {
 	}
 
 	e.Use(middleware.RateLimiterWithConfig(config))
+
+	// health endpoint
+	e.GET("/health", api.HealthCheckHandler)
 
 	// public routes start here
 	e.POST("/register", auth.RegisterHandler)

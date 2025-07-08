@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/retconned/kick-monitor/internal/db"
 	"github.com/retconned/kick-monitor/internal/models"
@@ -28,6 +29,25 @@ type ProcessLivestreamReportRequest struct {
 type FullLivestreamReport struct {
 	models.LivestreamReport
 	SpamReport *models.SpamReport `json:"spam_report,omitempty"`
+}
+
+// Simplified HealthCheckResponse for basic liveness.
+type HealthCheckResponse struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+	Message   string `json:"message"`
+}
+
+// HealthCheckHandler provides a basic liveness status for the Echo server.
+// It simply confirms the server is running and can respond to requests.
+func HealthCheckHandler(c echo.Context) error {
+	// If this handler is reached, it means Echo is running and processing requests.
+	response := HealthCheckResponse{
+		Status:    "healthy",
+		Timestamp: time.Now().Format(time.RFC3339),
+		Message:   "kick-monitor is alive and well!",
+	}
+	return c.JSON(http.StatusOK, response)
 }
 
 func AddChannelHandler(c echo.Context) error {

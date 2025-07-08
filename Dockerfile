@@ -35,7 +35,7 @@
 	FROM alpine:latest
 
 	# Install CA certificates
-	RUN apk --no-cache add ca-certificates
+    RUN apk add --no-cache ca-certificates curl && rm -rf /var/cache/apk/*
 
 	# Create a non-root user
 	RUN addgroup -g 1001 kick-monitor && \

@@ -55,8 +55,10 @@ type ChatMessage struct {
 }
 
 type LivestreamReport struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
-	LivestreamID    uint      `gorm:"not null"`
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey"`
+	LivestreamID uint      `gorm:"not null"`
+	Title        string
+
 	ChannelID       uint      `gorm:"not null"`
 	Username        string    `gorm:"size:255;not null"`
 	ReportStartTime time.Time `gorm:"not null"`
@@ -67,7 +69,8 @@ type LivestreamReport struct {
 	AverageViewers int     `gorm:"not null;default:0"`
 	PeakViewers    int     `gorm:"not null;default:0"`
 	LowestViewers  int     `gorm:"not null;default:0"`
-	Engagement     float64 `gorm:"not null;default:0.0"`
+	Engagement     float64 `gorm:"not null;default:0.0" `
+	HoursWatched   float64 `gorm:"not null;default:0.0" `
 
 	// Chat Metrics (spam/emote related moved to SpamReport)
 	TotalMessages    int `gorm:"not null;default:0"`

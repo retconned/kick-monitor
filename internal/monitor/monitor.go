@@ -996,10 +996,26 @@ func GenerateLivestreamReport(livestreamID uint) error {
 	}
 	log.Printf("Successfully generated spam report for livestream ID %d (Spam Report ID: %s)", livestreamID, spamReport.ID.String())
 
+	var sessionTitle string
+	err = db.DB.Model(&models.LivestreamData{}).Select("session_title").Where("livestream_id = ?", livestreamID).Order("created_at DESC").First(&sessionTitle).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			fmt.Printf("No entry found for LivestreamID: %d\n", livestreamID)
+		} else {
+			fmt.Printf("Error fetching only SessionTitle: %v\n", err)
+		}
+	} else {
+		fmt.Printf("Session Title (only fetched) for LivestreamID %d (last entry): %s\n", livestreamID, sessionTitle)
+	}
+
+	hoursWatched := CalculateWatchHours(metrics.ViewerCountsTimeline)
+
 	// Create Main Livestream Report
 	report := models.LivestreamReport{
 		ID:              uuid.New(),
 		LivestreamID:    livestreamID,
+		Title:           sessionTitle,
 		ChannelID:       ChannelID,
 		Username:        channelUsername,
 		ReportStartTime: reportStartTime,
@@ -1007,21 +1023,21 @@ func GenerateLivestreamReport(livestreamID uint) error {
 		DurationMinutes: durationMinutes,
 
 		// Viewer Analytics
-		AverageViewers: averageViewers,
-		PeakViewers:    peakViewers,
-		LowestViewers:  lowestViewers,
-		Engagement:     engagement, // Assign calculated engagement
-
+		AverageViewers:   averageViewers,
+		PeakViewers:      peakViewers,
+		LowestViewers:    lowestViewers,
+		Engagement:       engagement,
+		HoursWatched:     hoursWatched,
 		TotalMessages:    metrics.TotalMessages,
 		UniqueChatters:   len(metrics.UniqueChatters),
 		MessagesFromApps: metrics.MessagesFromApps,
 
-		SpamReportID: &spamReport.ID, // Link to the generated spam report
+		SpamReportID: &spamReport.ID,
 
-		ViewerCountsTimeline:  viewerTimelineJSON,  // Correctly assigned here
-		MessageCountsTimeline: messageTimelineJSON, // Correctly assigned here
+		ViewerCountsTimeline:  viewerTimelineJSON,
+		MessageCountsTimeline: messageTimelineJSON,
 
-		CreatedAt: time.Now(), // Set CreateAt for main report
+		CreatedAt: time.Now(),
 	}
 
 	if err := db.DB.Create(&report).Error; err != nil {
@@ -1174,6 +1190,20 @@ func calculateViewerAnalytics(viewerCounts []models.LivestreamData) (average, pe
 	average = totalViewers / len(viewerCounts)
 
 	return average, peak, lowest
+}
+
+func CalculateWatchHours(points []ViewerCountPoint) float64 {
+	if len(points) < 2 {
+		return 0
+	}
+
+	var totalSeconds float64
+	for i := 1; i < len(points); i++ {
+		dt := points[i].Time.Sub(points[i-1].Time).Seconds()
+		totalSeconds += float64(points[i-1].Count) * dt
+	}
+
+	return totalSeconds / 3600.0
 }
 
 func streamerProfileBuilder(channel *models.MonitoredChannel, kickData KickChannelResponse) error {

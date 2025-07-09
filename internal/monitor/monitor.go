@@ -277,20 +277,23 @@ func NewReportMetrics() *ReportMetrics {
 }
 
 type LivestreamReportRestructured struct {
-	LivestreamID          int             `json:"LivestreamID"`
-	ReportStartTime       time.Time       `json:"ReportStartTime"`
-	ReportEndTime         time.Time       `json:"ReportEndTime"`
-	DurationMinutes       int             `json:"DurationMinutes"`
-	AverageViewers        int             `json:"AverageViewers"`
-	PeakViewers           int             `json:"PeakViewers"`
-	LowestViewers         int             `json:"LowestViewers"`
-	Engagement            float64         `json:"Engagement"`
-	TotalMessages         int             `json:"TotalMessages"`
-	UniqueChatters        int             `json:"UniqueChatters"`
-	MessagesFromApps      int             `json:"MessagesFromApps"`
-	ViewerCountsTimeline  json.RawMessage `json:"ViewerCountsTimeline"`
-	MessageCountsTimeline json.RawMessage `json:"MessageCountsTimeline"`
-	CreatedAt             time.Time       `json:"CreatedAt"`
+	LivestreamID    int `json:"livestream_id"`
+	Title           int
+	ReportStartTime time.Time `json:"report_start_time"`
+	ReportEndTime   time.Time `json:"report_end_time"`
+	DurationMinutes int       `json:"duration_minutes"`
+	AverageViewers  int       `json:"average_viewers"`
+	PeakViewers     int       `json:"peak_viewers"`
+	LowestViewers   int       `json:"lowest_viewers"`
+	Engagement      float64   `json:"engagement"`
+	HoursWatched    float64   `json:"hours_watched"`
+
+	TotalMessages         int             `json:"total_messages"`
+	UniqueChatters        int             `json:"unique_chatters"`
+	MessagesFromApps      int             `json:"messages_from_apps"`
+	ViewerCountsTimeline  json.RawMessage `json:"viewer_counts_timeline"`
+	MessageCountsTimeline json.RawMessage `json:"message_counts_timeline"`
+	CreatedAt             time.Time       `json:"created_at"`
 }
 
 type FullLivestreamReportForProfile struct {
@@ -323,18 +326,18 @@ type StreamerProfileAPI struct {
 }
 
 type SpamReportRestructured struct {
-	MessagesWithEmotes         int             `json:"MessagesWithEmotes"`
-	MessagesMultipleEmotesOnly int             `json:"MessagesMultipleEmotesOnly"`
-	DuplicateMessagesCount     int             `json:"DuplicateMessagesCount"`
-	RepetitivePhrasesCount     int             `json:"RepetitivePhrasesCount"`
-	ExactDuplicateBursts       json.RawMessage `json:"ExactDuplicateBursts"`
-	SimilarMessageBursts       json.RawMessage `json:"SimilarMessageBursts"`
-	SuspiciousChatters         json.RawMessage `json:"SuspiciousChatters"`
+	MessagesWithEmotes         int             `json:"messages_with_emotes"`
+	MessagesMultipleEmotesOnly int             `json:"messages_multiple_emotes_only"`
+	DuplicateMessagesCount     int             `json:"duplicate_messages_count"`
+	RepetitivePhrasesCount     int             `json:"repetitive_phrases_count"`
+	ExactDuplicateBursts       json.RawMessage `json:"exact_duplicate_bursts"`
+	SimilarMessageBursts       json.RawMessage `json:"similar_message_bursts"`
+	SuspiciousChatters         json.RawMessage `json:"suspicious_chatters"`
 }
 
 func SetProxyURL(url string) error {
 	if url == "" {
-		return fmt.Errorf("apiclient: provided ProxyURL cannot be empty")
+		return fmt.Errorf("provided ProxyURL cannot be empty")
 	}
 	ProxyURL = url
 	return nil

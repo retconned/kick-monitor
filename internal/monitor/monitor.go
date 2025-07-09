@@ -277,8 +277,8 @@ func NewReportMetrics() *ReportMetrics {
 }
 
 type LivestreamReportRestructured struct {
-	LivestreamID    int `json:"livestream_id"`
-	Title           int
+	LivestreamID    int       `json:"livestream_id"`
+	Title           string    `json:"title"`
 	ReportStartTime time.Time `json:"report_start_time"`
 	ReportEndTime   time.Time `json:"report_end_time"`
 	DurationMinutes int       `json:"duration_minutes"`
@@ -1433,6 +1433,7 @@ func GetStreamerProfile(username string) (StreamerProfileAPI, error) {
 				fullReport := FullLivestreamReportForProfile{
 					LivestreamReportRestructured: LivestreamReportRestructured{
 						LivestreamID:          int(report.LivestreamID),
+						Title:                 report.Title,
 						ReportStartTime:       report.ReportStartTime,
 						DurationMinutes:       report.DurationMinutes,
 						AverageViewers:        report.AverageViewers,
@@ -1440,6 +1441,7 @@ func GetStreamerProfile(username string) (StreamerProfileAPI, error) {
 						LowestViewers:         report.LowestViewers,
 						Engagement:            report.Engagement,
 						TotalMessages:         report.TotalMessages,
+						HoursWatched:          report.HoursWatched,
 						UniqueChatters:        report.UniqueChatters,
 						MessagesFromApps:      report.MessagesFromApps,
 						ViewerCountsTimeline:  report.ViewerCountsTimeline,

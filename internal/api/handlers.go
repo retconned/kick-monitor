@@ -128,41 +128,65 @@ func ProcessLivestreamReportHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "livestream_id is required and must be a valid ID"})
 	}
 
-	log.Printf("Received request to process report for livestream ID: %d", req.LivestreamID)
+	log.Printf("Received request to process lr for livestream ID: %d", req.LivestreamID)
 
 	go func(livestreamID uint) {
 		err := monitor.GenerateLivestreamReport(livestreamID)
 		if err != nil {
-			log.Printf("Error generating livestream report for %d: %v", livestreamID, err)
+			log.Printf("Error generating livestream lr for %d: %v", livestreamID, err)
 		} else {
-			log.Printf("Successfully generated livestream report for %d", livestreamID)
+			log.Printf("Successfully generated livestream lr for %d", livestreamID)
 		}
 	}(req.LivestreamID)
 
-	return c.JSON(http.StatusAccepted, map[string]string{"status": "processing_started", "message": "Livestream report generation initiated."})
+	return c.JSON(http.StatusAccepted, map[string]string{"status": "processing_started", "message": "Livestream lr generation initiated."})
 }
 
-// getFullReport fetches a LivestreamReport and its associated SpamReport
-func getFullReport(query *gorm.DB) ([]FullLivestreamReport, error) {
+func getFullReport(query *gorm.DB) ([]monitor.FullLivestreamReportForProfile, error) {
 	var livestreamReports []models.LivestreamReport
 	if err := query.Find(&livestreamReports).Error; err != nil {
 		return nil, fmt.Errorf("failed to find livestream reports: %w", err)
 	}
 
 	if len(livestreamReports) == 0 {
-		return []FullLivestreamReport{}, nil // Return empty slice if no reports found
+		return []monitor.FullLivestreamReportForProfile{}, nil
 	}
 
-	fullReports := make([]FullLivestreamReport, len(livestreamReports))
+	fullReports := make([]monitor.FullLivestreamReportForProfile, len(livestreamReports))
 	for i, lr := range livestreamReports {
-		fullReports[i].LivestreamReport = lr
+		fullReports[i].LivestreamReportRestructured = monitor.LivestreamReportRestructured{
+			LivestreamID:          int(lr.LivestreamID),
+			Title:                 lr.Title,
+			ReportStartTime:       lr.ReportStartTime,
+			DurationMinutes:       lr.DurationMinutes,
+			AverageViewers:        lr.AverageViewers,
+			PeakViewers:           lr.PeakViewers,
+			LowestViewers:         lr.LowestViewers,
+			Engagement:            lr.Engagement,
+			TotalMessages:         lr.TotalMessages,
+			HoursWatched:          lr.HoursWatched,
+			UniqueChatters:        lr.UniqueChatters,
+			MessagesFromApps:      lr.MessagesFromApps,
+			ViewerCountsTimeline:  lr.ViewerCountsTimeline,
+			MessageCountsTimeline: lr.MessageCountsTimeline,
+			CreatedAt:             lr.CreatedAt,
+		}
+		// fmt.Println(i, lr)
 		if lr.SpamReportID != nil {
 			var spamReport models.SpamReport
 			if err := db.DB.Where("id = ?", lr.SpamReportID).First(&spamReport).Error; err != nil {
-				log.Printf("Warning: Failed to fetch spam report %s for livestream report %s: %v", lr.SpamReportID.String(), lr.ID.String(), err)
-				fullReports[i].SpamReport = nil // Set to nil if not found
+				log.Printf("Warning: Failed to fetch spam report  %s for livestream id %s: %v", lr.SpamReportID.String(), lr.ID.String(), err)
+
 			} else {
-				fullReports[i].SpamReport = &spamReport
+				fullReports[i].SpamReport = monitor.SpamReportRestructured{
+					MessagesWithEmotes:         spamReport.MessagesWithEmotes,
+					MessagesMultipleEmotesOnly: spamReport.MessagesWithEmotes,
+					DuplicateMessagesCount:     spamReport.DuplicateMessagesCount,
+					RepetitivePhrasesCount:     spamReport.RepetitivePhrasesCount,
+					ExactDuplicateBursts:       spamReport.ExactDuplicateBursts,
+					SimilarMessageBursts:       spamReport.SimilarMessageBursts,
+					SuspiciousChatters:         spamReport.SuspiciousChatters,
+				}
 			}
 		}
 	}
@@ -174,12 +198,12 @@ func GetReportByUUIDHandler(c echo.Context) error {
 	reportUUIDStr := c.Param("reportUUID") // Use c.Param for path variables
 	reportUUID, err := uuid.Parse(reportUUIDStr)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid report UUID format"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid lr UUID format"})
 	}
 
 	fullReports, err := getFullReport(db.DB.Where("id = ?", reportUUID))
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"message": fmt.Sprintf("Failed to fetch report: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": fmt.Sprintf("Failed to fetch lr: %v", err)})
 	}
 
 	if len(fullReports) == 0 {
@@ -205,7 +229,7 @@ func GetReportsByChannelIDHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, fullReports)
 }
 
-// GetReportsByLivestreamIDHandler handles GET /livestreams/{livestream_id}/reports
+// GetReportsByLivestreamIDHandler handles GET /livestream/id
 func GetReportsByLivestreamIDHandler(c echo.Context) error {
 	livestreamIDStr := c.Param("livestreamID") // Use c.Param for path variables
 	livestreamID, err := strconv.ParseUint(livestreamIDStr, 10, 64)

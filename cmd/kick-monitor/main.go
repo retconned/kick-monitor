@@ -121,9 +121,11 @@ func main() {
 
 	// Reports API
 	// Group these routes with common prefixes
-	// e.GET("/reports/:reportUUID", api.GetReportByUUIDHandler)                        // /reports/uuid-string
-	// e.GET("/channels/:channelID/reports", api.GetReportsByChannelIDHandler)          // /channels/id/reports
-	// e.GET("/livestreams/:livestreamID/reports", api.GetReportsByLivestreamIDHandler) // /livestreams/id/reports
+	// e.GET("/reports/:reportUUID", api.GetReportByUUIDHandler)
+	// e.GET("/channels/:channelID/reports", api.GetReportsByChannelIDHandler)
+
+	// route to get livestream report
+	e.GET("/livestream/:livestreamID", api.GetReportsByLivestreamIDHandler) // /livestream/id
 
 	// Channels Info API
 	e.GET("/profile/:username", api.GetStreamerProfileHandler) // /channels/id/profile (aggregated profile)

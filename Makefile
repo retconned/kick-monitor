@@ -40,6 +40,10 @@ docker-build:
 	@echo "Building Docker image..."
 	docker build -t kick-monitor .
 
+docker-rebuild:
+	@echo "Rebuilding docker..."
+	docker-compose up --build -d
+
 docker-up: docker-build
 	@echo "Running Docker containers (app and db)..."
 	docker-compose up -d

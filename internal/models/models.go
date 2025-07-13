@@ -24,21 +24,19 @@ type ChannelData struct {
 }
 
 type LivestreamData struct {
-	ChannelID    uint `gorm:"primaryKey"` // Primary key part 1, Foreign Key
-	LivestreamID uint `gorm:"primaryKey"` // Primary key part 2, from livestream data 'id'
-
+	ChannelID    uint `gorm:"primaryKey"`
+	LivestreamID uint `gorm:"primaryKey"`
 	// Extracted Livestream Fields
-	Slug                string    `gorm:"size:255"`
-	StartTime           time.Time // Original start_time from livestream data
-	SessionTitle        string    `gorm:"size:255"`
+	Slug                string `gorm:"size:255"`
+	StartTime           time.Time
+	SessionTitle        string `gorm:"size:255"`
 	ViewerCount         int
-	LivestreamCreatedAt time.Time // Original created_at from livestream data
-	Tags                []byte    `gorm:"type:jsonb"` // Store tags as JSONB
+	LivestreamCreatedAt time.Time
+	Tags                []byte `gorm:"type:jsonb"`
 	IsLive              bool
 	Duration            int
 	LangISO             string    `gorm:"size:10"`
-	CreatedAt           time.Time `gorm:"primaryKey;autoCreateTime"` // Primary key part 3, timestamp of the fetch
-
+	CreatedAt           time.Time `gorm:"primaryKey;autoCreateTime"`
 }
 
 type ChatMessage struct {

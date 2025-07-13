@@ -193,6 +193,97 @@ func getFullReport(query *gorm.DB) ([]monitor.FullLivestreamReportForProfile, er
 	return fullReports, nil
 }
 
+// getLatestLivestreams handles the GET /livestreams/latest endpoint
+func GetLatestLivestreams(c echo.Context) error {
+	var latestLivestreams []models.LivestreamData
+
+	// Using the Window Function approach (recommended for PostgreSQL)
+	// This is typically the most efficient for this type of query.
+	windowSQL := `
+		SELECT *
+		FROM (
+			SELECT
+				*,
+				ROW_NUMBER() OVER (PARTITION BY livestream_id ORDER BY created_at DESC) as rn
+			FROM
+				livestream_data
+		) AS subquery
+		WHERE rn = 1
+		ORDER BY livestream_id, created_at DESC;
+	`
+	err := db.DB.Raw(windowSQL).Scan(&latestLivestreams).Error
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to get latest livestreams: %v", err)})
+	}
+
+	/*
+		subQuery := db.DB.Model(&LivestreamData{}).
+			Select("livestream_id, MAX(created_at) as created_at").
+			Group("livestream_id")
+
+		err = db.DB.Table("livestream_data").
+			Joins("INNER JOIN (?) as t2 ON livestream_data.livestream_id = t2.livestream_id AND livestream_data.created_at = t2.created_at", subQuery).
+			Find(&latestLivestreams).Error
+
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to get latest livestreams: %v", err)})
+		}
+	*/
+
+	return c.JSON(http.StatusOK, latestLivestreams)
+}
+
+// getLatestLivestreamsByUsername handles the GET /livestreams/:username endpoint
+func GetLatestLivestreamsByUsername(c echo.Context) error {
+	username := c.Param("username") // Get username from URL path
+
+	if username == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "username cannot be empty"})
+	}
+
+	// Step 1: Query MonitoredChannel to get ChannelID from Username
+	var monitoredChannel models.MonitoredChannel
+	result := db.DB.Where("username = ?", username).First(&monitoredChannel)
+
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": fmt.Sprintf("channel with username '%s' not found", username)})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to query channel by username: %v", result.Error)})
+	}
+
+	channelID := monitoredChannel.ChannelID
+	log.Printf("Found ChannelID %d for username '%s'", channelID, username)
+
+	// Step 2: Fetch latest LivestreamData entries for the found ChannelID
+	var latestLivestreams []models.LivestreamData
+
+	windowSQL := `
+		SELECT *
+		FROM (
+			SELECT
+				*,
+				ROW_NUMBER() OVER (PARTITION BY livestream_id ORDER BY created_at DESC) as rn
+			FROM
+				livestream_data
+			WHERE
+				channel_id = ? -- Filter by ChannelID here
+		) AS subquery
+		WHERE rn = 1
+		ORDER BY livestream_id, created_at DESC;
+	`
+	err := db.DB.Raw(windowSQL, channelID).Scan(&latestLivestreams).Error
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to get latest livestreams for channel %d: %v", channelID, err)})
+	}
+
+	if len(latestLivestreams) == 0 {
+		return c.JSON(http.StatusNotFound, map[string]string{"message": fmt.Sprintf("no livestream data found for channel with username '%s'", username)})
+	}
+
+	return c.JSON(http.StatusOK, latestLivestreams)
+}
+
 // GetReportByUUIDHandler now takes echo.Context
 func GetReportByUUIDHandler(c echo.Context) error {
 	reportUUIDStr := c.Param("reportUUID") // Use c.Param for path variables

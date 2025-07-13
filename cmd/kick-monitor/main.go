@@ -127,6 +127,9 @@ func main() {
 	// route to get livestream report
 	e.GET("/livestream/:livestreamID", api.GetReportsByLivestreamIDHandler) // /livestream/id
 
+	// TODO: /livestreams , might need a new name. we'll get protected
+	e.GET("/livestreams", api.GetLatestLivestreams)
+	e.GET("/livestreams/:username", api.GetLatestLivestreamsByUsername)
 	// Channels Info API
 	e.GET("/profile/:username", api.GetStreamerProfileHandler) // /channels/id/profile (aggregated profile)
 

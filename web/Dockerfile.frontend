@@ -1,0 +1,36 @@
+# Stage 1: Build the React application
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Copy package.json and lock files first to leverage Docker cache.
+COPY package.json ./
+COPY package-lock.json* ./
+COPY npm-shrinkwrap.json* ./
+
+# Install dependencies
+RUN echo "📦 Installing frontend dependencies..." && \
+    npm install --frozen-lockfile || npm install
+
+# Copy the rest of the frontend source code (excluding .dockerignore files)
+COPY . .
+
+# Build the React app for production
+RUN echo "🔨 Building the React application..." && \
+    npm run build
+
+# Stage 2: Serve the React app with Nginx
+FROM nginx:alpine
+
+# Copy your custom Nginx config for SPAs
+# This config will instruct Nginx to serve index.html for unknown routes.
+COPY nginx-frontend.conf /etc/nginx/conf.d/default.conf
+
+# Copy the built React app into Nginx's default web server directory
+COPY --from=frontend-builder /app/dist /usr/share/nginx/html
+
+# Expose port 80 (Nginx's default)
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -27,6 +27,10 @@ dev-air:
 	JWT_SECRET=$(JWT_SECRET) \
 	air .
 
+dev-web:
+	@echo "Running frontend..."
+	cd web && pnpm dev
+
 test:
 	@echo "Running tests..."
 	go test ./...

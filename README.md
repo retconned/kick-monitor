@@ -123,8 +123,11 @@ Then, in a separate terminal:
 
 ```bash
 cd web
-npm install # Only if you haven't done it before or deps changed
-npm run dev
+pnpm install # Only if you haven't done it before or deps changed
+pnpm dev
+
+# Or
+make dev-web
 ```
 
 The Vite dev server will typically start on `http://localhost:5173` (or similar). Open your browser to this address. Vite's proxy configuration (in `web/vite.config.js`) will forward `/api/*` requests to your running `kick-monitor-api` service.
@@ -158,7 +161,7 @@ Ensure your `web/vite.config.js` has `base: './'` for relative paths in the buil
 5.  **Configure Build Settings:**
     - **Project name:** `kick-monitor-frontend` (or your preferred name)
     - **Production branch:** `main` (or your default branch)
-    - **Build command:** `npm run build`
+    - **Build command:** `pnpm run build`
     - **Build directory:** `web/dist` (This tells Cloudflare where to find your built frontend files after the `npm run build` command runs from within the `web` directory)
     - **Root directory:** `web` (This is crucial, it tells Cloudflare where your `package.json` and frontend source code are located within your repo)
 6.  **Environment Variables (Optional):** If your frontend build process needs any environment variables, define them here.

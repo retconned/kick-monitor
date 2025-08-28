@@ -50,7 +50,7 @@ const ErrorDisplay = ({
 );
 
 const fetchLivestreams = async (): Promise<AllLivestreams[]> => {
-    const response = await fetch(`http://localhost:8080/livestreams`);
+    const response = await fetch(`http://localhost:80/api/livestreams`);
     if (!response.ok) {
         throw new Error(`Failed to fetch livestreams: ${response.statusText}`);
     }
@@ -114,7 +114,7 @@ export default function AdminPage() {
     const handleProcess = async (id: number) => {
         try {
             const response = await fetch(
-                "http://localhost:8080/process_livestream_report", // 1. Updated URL
+                "http://localhost:80/api/process_livestream_report",
                 {
                     method: "POST",
                     headers: {

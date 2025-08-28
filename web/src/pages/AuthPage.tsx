@@ -56,7 +56,7 @@ const loginUser = (data: TLoginSchema) => {
 const registerUser = async (data: TSignupSchema) => {
     const payload = { email: data.email, password: data.password };
 
-    const response = await fetch("http://localhost:8080/register", {
+    const response = await fetch("http://localhost:80/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

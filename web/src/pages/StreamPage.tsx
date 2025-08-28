@@ -102,7 +102,7 @@ const chartConfig = {
 
 // API Functions
 const fetchLivestreamData = async (id: string): Promise<Livestream> => {
-    const response = await fetch(`http://localhost:8080/livestream/${id}`);
+    const response = await fetch(`http://localhost:80/api/livestream/${id}`);
 
     if (!response.ok) {
         throw new Error(

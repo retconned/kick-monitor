@@ -121,7 +121,7 @@ const ErrorDisplay = ({
 );
 
 const fetchProfileData = async (username: string): Promise<APIResponse> => {
-    const response = await fetch(`http://localhost:8080/profile/${username}`);
+    const response = await fetch(`http://localhost:80/api/profile/${username}`);
     if (!response.ok) {
         throw new Error(`Failed to fetch profile data: ${response.statusText}`);
     }

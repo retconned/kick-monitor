@@ -107,7 +107,7 @@ export default function ContactPage() {
                         <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
                             <Shield className="h-6 w-6 text-primary" />
                         </div>
-                        <span className="text-2xl font-bold">StreamGuard</span>
+                        <span className="text-2xl font-bold">KickMonitor</span>
                     </div>
                     <h1 className="text-4xl font-bold mb-4">Get in Touch</h1>
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

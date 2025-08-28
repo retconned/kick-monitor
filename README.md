@@ -1,6 +1,6 @@
 # Kick Monitor
 
-**Disclaimer:** This project began as a small side project for personal learning and exploration. While the full stack is functional, certain parts are still under active development or awaiting further design polish. Contributions are very welcome to help mature this project!
+**Disclaimer:** :construction: This project began as a small side project for personal learning and exploration. While the full stack is functional, certain parts are still under active development or awaiting further design polish. Contributions are very welcome to help mature this project!
 
 Kick Monitor is a full-stack application born from a passion to enable more transparency about livestreaming metrics and numbers, especially in an environment where botting and artificial number boosting are prevalent. This project works solely based on public-facing data, cleaning it up and presenting it in a more insightful way. Currently, it's designed for self-hosting and local use but has the potential to be upgraded into a full-fledged platform usable by multiple real users.
 

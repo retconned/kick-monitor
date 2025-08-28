@@ -141,12 +141,14 @@ The Vite dev server will typically start on `http://localhost:5173` (or similar)
 Once the backend is running (either via Docker Compose or locally), it exposes the following (and more) API endpoints via the Nginx proxy:
 
 - **`GET /api/health`**: Checks the health status of the backend API.
-- **`GET /api/status`**: Provides a general status message from the backend.
-- **`POST /api/auth/login`**: Authenticates a user and returns a JWT token.
-    - **Body (x-www-form-urlencoded or JSON if your handler accepts):** `username=admin&password=password`
-- **`POST /api/add_channel`**
+- **`POST /api/login`**: Authenticates a user and returns a JWT token.
+- **`POST /api/register`**: Registers a user.
+- **`POST /api/add_channel`** (Needs authentication)
     - **Body (JSON):** `{"username": "xqc", "is_active": true}`
     - Adds or updates a channel in `monitored_channels`. If active, it starts monitoring API and WebSocket data.
+- **`GET /api/livestreams`**: Gets a list of all livestreams recorded.
+- **`GET /api/livestreams/username`**: Gets a list of all livestreams recorded
+  for specified susername.
 
 ## Deploying Frontend to Cloudflare Pages
 

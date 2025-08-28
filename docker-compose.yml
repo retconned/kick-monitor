@@ -1,3 +1,4 @@
+# docker-compose.yml (in your project root)
 services:
     db:
         image: postgres:15-alpine
@@ -7,8 +8,8 @@ services:
             POSTGRES_DB: kick_monitor
         volumes:
             - postgres_data:/var/lib/postgresql/data
-        ports:
-            - "5432:5432"
+        # Port is not usually exposed to host if only other containers access it
+        # - "5432:5432"
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
             interval: 10s
@@ -24,8 +25,8 @@ services:
             - LOG_LEVEL=${LOG_LEVEL:-info}
             - LOG_HTML=${LOG_HTML:-false}
             - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
-        ports:
-            - "8191:8191"
+        # Port is not usually exposed to host if only other containers (backend) access it
+        # - "8191:8191"
         healthcheck:
             test:
                 ["CMD-SHELL", "curl -f http://localhost:8191/health || exit 1"]
@@ -36,23 +37,57 @@ services:
         networks:
             - app-net
 
-    kick-monitor:
-        build: .
-        ports:
-            - "8080:8080"
+    # Backend Go service
+    kick-monitor-api:
+        build:
+            context: .
+            dockerfile: Dockerfile.backend
+        # Do NOT expose port 8080 here directly to the host.
+        # Nginx will handle external access and proxy to this internal port.
+        # ports:
+        #     - "8080:8080"
         environment:
             DB_HOST: db
             DB_PORT: 5432
             DB_USER: postgres
             DB_PASSWORD: postgres
             DB_NAME: kick_monitor
-            PROXY_URL: http://flaresolverr:8191/v1
+            PROXY_URL: http://flaresolverr:8191/v1 # Flaresolverr is internal service now
             JWT_SECRET: ${JWT_SECRET}
         depends_on:
             db:
                 condition: service_healthy
             flaresolverr:
                 condition: service_healthy
+        networks:
+            - app-net
+        restart: on-failure
+
+    # Frontend React Vite service
+    kick-monitor-frontend:
+        build:
+            context: ./web
+            dockerfile: Dockerfile.frontend
+        # Nginx will handle external access and proxy to this internal port.
+        networks:
+            - app-net
+        depends_on:
+            - kick-monitor-api # Frontend needs backend to be up for API calls to work conceptually
+
+    # Nginx reverse proxy service
+    nginx:
+        image: nginx:alpine
+        volumes:
+            # Mount the custom Nginx configuration file
+            - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        ports:
+            - "80:80"
+        # You might want to map to 443 with SSL/TLS in production
+        depends_on:
+            kick-monitor-api:
+                condition: service_started # Only needs services to be running, not healthy for Nginx itself
+            kick-monitor-frontend:
+                condition: service_started
         networks:
             - app-net
         restart: on-failure

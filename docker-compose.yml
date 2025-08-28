@@ -66,9 +66,8 @@ services:
     # Frontend React Vite service
     kick-monitor-frontend:
         build:
-            context: ./web # <--- Build from the 'web' directory
+            context: ./web
             dockerfile: Dockerfile.frontend
-        # Do NOT expose port 80 here directly to the host.
         # Nginx will handle external access and proxy to this internal port.
         networks:
             - app-net

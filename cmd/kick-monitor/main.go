@@ -109,15 +109,15 @@ func main() {
 	}
 
 	e.Use(middleware.RateLimiterWithConfig(config))
-
+	apiGroup := e.Group("/api")
 	// health endpoint
-	e.GET("/health", api.HealthCheckHandler)
+	apiGroup.GET("/health", api.HealthCheckHandler)
 
 	// public routes start here
-	e.POST("/register", auth.RegisterHandler)
-	e.POST("/login", auth.LoginHandler)
+	apiGroup.POST("/register", auth.RegisterHandler)
+	apiGroup.POST("/login", auth.LoginHandler)
 
-	e.POST("/process_livestream_report", api.ProcessLivestreamReportHandler) // This is asynchronous, can be public
+	apiGroup.POST("/process_livestream_report", api.ProcessLivestreamReportHandler) // This is asynchronous, can be public
 
 	// Reports API
 	// Group these routes with common prefixes
@@ -125,16 +125,16 @@ func main() {
 	// e.GET("/channels/:channelID/reports", api.GetReportsByChannelIDHandler)
 
 	// route to get livestream report
-	e.GET("/livestream/:livestreamID", api.GetReportsByLivestreamIDHandler) // /livestream/id
+	apiGroup.GET("/livestream/:livestreamID", api.GetReportsByLivestreamIDHandler) // /livestream/id
 
 	// TODO: /livestreams , might need a new name. we'll get protected
-	e.GET("/livestreams", api.GetLatestLivestreams)
-	e.GET("/livestreams/:username", api.GetLatestLivestreamsByUsername)
+	apiGroup.GET("/livestreams", api.GetLatestLivestreams)
+	apiGroup.GET("/livestreams/:username", api.GetLatestLivestreamsByUsername)
 	// Channels Info API
-	e.GET("/profile/:username", api.GetStreamerProfileHandler) // /channels/id/profile (aggregated profile)
+	apiGroup.GET("/profile/:username", api.GetStreamerProfileHandler) // /channels/id/profile (aggregated profile)
 
 	// proeteced routes start here
-	r := e.Group("/protected")
+	r := apiGroup.Group("/protected")
 	r.Use(auth.AuthMiddleware())
 	r.POST("/add_channel", api.AddChannelHandler)
 
